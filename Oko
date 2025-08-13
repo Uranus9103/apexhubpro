@@ -1,4 +1,4 @@
--- LocalScript đặt trong StarterGui
+-- LocalScript trong StarterGui
 
 local player = game.Players.LocalPlayer
 
@@ -6,6 +6,7 @@ local player = game.Players.LocalPlayer
 -- CẤU HÌNH HỆ THỐNG KEY
 -- =========================
 local KeySystem = {
+    Enable = true, -- true = bật KeySystem
     Title = "Văn ThànHh IOS / Script Tổng Hợp",
     Description = "Nhập key để tiếp tục",
     Keys = {"VanThanhIOS"},
@@ -29,57 +30,7 @@ local function sendNotification(text)
 end
 
 -- =========================
--- GIAO DIỆN NHẬP KEY
--- =========================
-local keyGui = Instance.new("ScreenGui")
-keyGui.Name = "KeySystemUI"
-keyGui.ResetOnSpawn = false
-keyGui.Parent = player:WaitForChild("PlayerGui")
-
-local keyFrame = Instance.new("Frame")
-keyFrame.Parent = keyGui
-keyFrame.Size = UDim2.new(0, 300, 0, 150)
-keyFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
-keyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-keyFrame.BorderSizePixel = 0
-
-local uiCorner = Instance.new("UICorner", keyFrame)
-uiCorner.CornerRadius = UDim.new(0, 6)
-
-local title = Instance.new("TextLabel")
-title.Parent = keyFrame
-title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-title.Text = KeySystem.Title
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 18
-title.Font = Enum.Font.GothamBold
-
-local keyBox = Instance.new("TextBox")
-keyBox.Parent = keyFrame
-keyBox.Size = UDim2.new(0.9, 0, 0, 40)
-keyBox.Position = UDim2.new(0.05, 0, 0.4, 0)
-keyBox.PlaceholderText = "Nhập Key..."
-keyBox.Text = ""
-keyBox.TextSize = 16
-keyBox.Font = Enum.Font.Gotham
-keyBox.TextColor3 = Color3.new(1, 1, 1)
-keyBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-keyBox.BorderSizePixel = 0
-
-local confirmBtn = Instance.new("TextButton")
-confirmBtn.Parent = keyFrame
-confirmBtn.Size = UDim2.new(0.4, 0, 0, 30)
-confirmBtn.Position = UDim2.new(0.3, 0, 0.75, 0)
-confirmBtn.Text = "Xác Nhận"
-confirmBtn.TextSize = 16
-confirmBtn.Font = Enum.Font.GothamBold
-confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-confirmBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-confirmBtn.BorderSizePixel = 0
-
--- =========================
--- CODE UI CHÍNH
+-- UI CHÍNH
 -- =========================
 local function createMainUI()
     local gui = Instance.new("ScreenGui")
@@ -89,22 +40,33 @@ local function createMainUI()
 
     local frame = Instance.new("Frame")
     frame.Parent = gui
-    frame.Size = UDim2.new(0, 280, 0, 160)
-    frame.Position = UDim2.new(0.5, -140, 0.4, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    frame.Size = UDim2.new(0, 300, 0, 180)
+    frame.Position = UDim2.new(0.5, -150, 0.4, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Draggable = true
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+    local shadow = Instance.new("ImageLabel")
+    shadow.Parent = frame
+    shadow.Size = UDim2.new(1, 20, 1, 20)
+    shadow.Position = UDim2.new(0, -10, 0, -10)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://5028857084"
+    shadow.ImageTransparency = 0.4
+    shadow.ZIndex = -1
 
     local title = Instance.new("TextLabel")
     title.Parent = frame
-    title.Size = UDim2.new(1, 0, 0, 36)
+    title.Size = UDim2.new(1, 0, 0, 40)
     title.BackgroundTransparency = 1
     title.Text = "APEX PREMIUM"
     title.TextColor3 = Color3.fromRGB(255,255,255)
     title.TextSize = 21
     title.Font = Enum.Font.GothamBold
 
+    -- Hàm tạo nút switch với đổi màu liên tục
     local function createSwitch(parent, yPos, labelText)
         local holder = Instance.new("Frame")
         holder.Parent = parent
@@ -115,7 +77,6 @@ local function createMainUI()
         local label = Instance.new("TextLabel")
         label.Parent = holder
         label.Size = UDim2.new(0, 110, 1, 0)
-        label.Position = UDim2.new(0, 0, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = labelText
         label.TextColor3 = Color3.fromRGB(230,230,230)
@@ -126,9 +87,8 @@ local function createMainUI()
         toggleBG.Parent = holder
         toggleBG.Size = UDim2.new(0, 90, 0, 32)
         toggleBG.Position = UDim2.new(0, 120, 0.5, -16)
-        toggleBG.BackgroundColor3 = Color3.fromRGB(180, 40, 40) 
+        toggleBG.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
         toggleBG.BorderSizePixel = 0
-        toggleBG.Name = "ToggleBG"
         Instance.new("UICorner", toggleBG).CornerRadius = UDim.new(1, 0)
 
         local knob = Instance.new("Frame")
@@ -137,26 +97,37 @@ local function createMainUI()
         knob.Position = UDim2.new(0, 0, 0, 0)
         knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         knob.BorderSizePixel = 0
-        knob.Name = "Knob"
-        knob.ZIndex = 2
         Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-
         local knobOutline = Instance.new("UIStroke", knob)
         knobOutline.Thickness = 2
         knobOutline.Color = Color3.fromRGB(80,80,80)
 
         local state = false
+        local running = true
+
+        -- Hàm đổi màu liên tục
+        task.spawn(function()
+            local hue = 0
+            while running do
+                hue = (hue + 0.005) % 1
+                if state then
+                    toggleBG.BackgroundColor3 = Color3.fromHSV(hue, 0.6, 1) -- cầu vồng khi bật
+                else
+                    toggleBG.BackgroundColor3 = Color3.fromHSV(hue, 0.8, 0.7) -- đỏ-cam khi tắt
+                end
+                task.wait(0.03)
+            end
+        end)
+
         local function setState(newState, animate)
             state = newState
             if state then
-                toggleBG.BackgroundColor3 = Color3.fromRGB(40, 170, 60) 
                 if animate then
                     knob:TweenPosition(UDim2.new(1, -32, 0, 0), "Out", "Quad", 0.15, true)
                 else
                     knob.Position = UDim2.new(1, -32, 0, 0)
                 end
             else
-                toggleBG.BackgroundColor3 = Color3.fromRGB(180, 40, 40) 
                 if animate then
                     knob:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quad", 0.15, true)
                 else
@@ -165,11 +136,8 @@ local function createMainUI()
             end
         end
 
-        setState(false, false)
-
         local function toggle()
             setState(not state, true)
-            -- Thêm code xử lý ở đây khi bật / tắt
         end
 
         knob.InputBegan:Connect(function(input)
@@ -191,22 +159,78 @@ local function createMainUI()
 end
 
 -- =========================
--- XỬ LÝ NHẬP KEY
+-- UI NHẬP KEY
 -- =========================
-confirmBtn.MouseButton1Click:Connect(function()
-    local enteredKey = keyBox.Text
-    local valid = false
-    for _, k in ipairs(KeySystem.Keys) do
-        if enteredKey == k then
-            valid = true
-            break
+local function createKeyUI()
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "KeySystemUI"
+    keyGui.ResetOnSpawn = false
+    keyGui.Parent = player:WaitForChild("PlayerGui")
+
+    local keyFrame = Instance.new("Frame")
+    keyFrame.Parent = keyGui
+    keyFrame.Size = UDim2.new(0, 300, 0, 150)
+    keyFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    keyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    keyFrame.BorderSizePixel = 0
+    Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0, 6)
+
+    local title = Instance.new("TextLabel")
+    title.Parent = keyFrame
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundTransparency = 1
+    title.Text = KeySystem.Title
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 18
+    title.Font = Enum.Font.GothamBold
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Parent = keyFrame
+    keyBox.Size = UDim2.new(0.9, 0, 0, 40)
+    keyBox.Position = UDim2.new(0.05, 0, 0.4, 0)
+    keyBox.PlaceholderText = "Nhập Key..."
+    keyBox.Text = ""
+    keyBox.TextSize = 16
+    keyBox.Font = Enum.Font.Gotham
+    keyBox.TextColor3 = Color3.new(1, 1, 1)
+    keyBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    keyBox.BorderSizePixel = 0
+
+    local confirmBtn = Instance.new("TextButton")
+    confirmBtn.Parent = keyFrame
+    confirmBtn.Size = UDim2.new(0.4, 0, 0, 30)
+    confirmBtn.Position = UDim2.new(0.3, 0, 0.75, 0)
+    confirmBtn.Text = "Xác Nhận"
+    confirmBtn.TextSize = 16
+    confirmBtn.Font = Enum.Font.GothamBold
+    confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    confirmBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+    confirmBtn.BorderSizePixel = 0
+
+    confirmBtn.MouseButton1Click:Connect(function()
+        local enteredKey = keyBox.Text
+        local valid = false
+        for _, k in ipairs(KeySystem.Keys) do
+            if enteredKey == k then
+                valid = true
+                break
+            end
         end
-    end
-    if valid then
-        sendNotification(KeySystem.Notifi.CorrectKey)
-        keyGui:Destroy()
-        createMainUI()
-    else
-        sendNotification(KeySystem.Notifi.IncorrectKey)
-    end
-end)
+        if valid then
+            sendNotification(KeySystem.Notifi.CorrectKey)
+            keyGui:Destroy()
+            createMainUI()
+        else
+            sendNotification(KeySystem.Notifi.IncorrectKey)
+        end
+    end)
+end
+
+-- =========================
+-- KHỞI CHẠY
+-- =========================
+if KeySystem.Enable then
+    createKeyUI()
+else
+    createMainUI()
+end
