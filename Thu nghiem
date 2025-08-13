@@ -1,214 +1,130 @@
--- 📌 Fly GUI Pro + Rainbow UI
--- Bỏ LocalScript này vào StarterGui
+-- LocalScript trong StarterGui
 
-local player = game.Players.LocalPlayer
-local mouse = player:GetMouse()
-local uis = game:GetService("UserInputService")
-local rs = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
 
---⚙️ Fly config
 local flying = false
-local speed = 50
-local upDownSpeed = 3
-local rainbowSpeed = 2
+local flySpeed = 50
+local flyHeightSpeed = 2
+local rainbowColors = {}
+local colorIndex = 1
 
--- 🎨 Rainbow color function
-local function rainbowColor(hueShift)
-	return Color3.fromHSV((tick() * rainbowSpeed + hueShift) % 1, 1, 1)
+-- Hàm tạo màu cầu vồng
+for i = 0, 1, 0.02 do
+	table.insert(rainbowColors, Color3.fromHSV(i, 1, 1))
 end
 
--- 📌 GUI Creation
+-- Tạo ScreenGui
 local gui = Instance.new("ScreenGui")
+gui.Name = "FlyGUI"
+gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 150, 0, 240)
-mainFrame.Position = UDim2.new(0.85, 0, 0.4, 0)
-mainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-mainFrame.BackgroundTransparency = 0.3
-mainFrame.BorderSizePixel = 3
-mainFrame.Parent = gui
-mainFrame.Active = true
-mainFrame.Draggable = true
-
--- Nút Bật Bay
-local btnFlyOn = Instance.new("TextButton")
-btnFlyOn.Size = UDim2.new(1, 0, 0, 40)
-btnFlyOn.Position = UDim2.new(0, 0, 0, 0)
-btnFlyOn.Text = "🚀 BẬT BAY"
-btnFlyOn.Font = Enum.Font.SourceSansBold
-btnFlyOn.TextSize = 20
-btnFlyOn.TextColor3 = Color3.new(1, 1, 1)
-btnFlyOn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-btnFlyOn.Parent = mainFrame
-
--- Nút Tắt Bay
-local btnFlyOff = Instance.new("TextButton")
-btnFlyOff.Size = UDim2.new(1, 0, 0, 40)
-btnFlyOff.Position = UDim2.new(0, 0, 0, 40)
-btnFlyOff.Text = "🛑 TẮT BAY"
-btnFlyOff.Font = Enum.Font.SourceSansBold
-btnFlyOff.TextSize = 20
-btnFlyOff.TextColor3 = Color3.new(1, 1, 1)
-btnFlyOff.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-btnFlyOff.Parent = mainFrame
-
--- Tốc độ bay
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Size = UDim2.new(1, 0, 0, 30)
-speedLabel.Position = UDim2.new(0, 0, 0, 80)
-speedLabel.Text = "Tốc độ: " .. speed
-speedLabel.Font = Enum.Font.SourceSansBold
-speedLabel.TextSize = 18
-speedLabel.TextColor3 = Color3.new(1, 1, 1)
-speedLabel.BackgroundTransparency = 1
-speedLabel.Parent = mainFrame
-
--- + tốc độ
-local btnSpeedUp = Instance.new("TextButton")
-btnSpeedUp.Size = UDim2.new(0.5, 0, 0, 40)
-btnSpeedUp.Position = UDim2.new(0, 0, 0, 110)
-btnSpeedUp.Text = "+"
-btnSpeedUp.Font = Enum.Font.SourceSansBold
-btnSpeedUp.TextSize = 25
-btnSpeedUp.TextColor3 = Color3.new(1, 1, 1)
-btnSpeedUp.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-btnSpeedUp.Parent = mainFrame
-
--- - tốc độ
-local btnSpeedDown = Instance.new("TextButton")
-btnSpeedDown.Size = UDim2.new(0.5, 0, 0, 40)
-btnSpeedDown.Position = UDim2.new(0.5, 0, 0, 110)
-btnSpeedDown.Text = "-"
-btnSpeedDown.Font = Enum.Font.SourceSansBold
-btnSpeedDown.TextSize = 25
-btnSpeedDown.TextColor3 = Color3.new(1, 1, 1)
-btnSpeedDown.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-btnSpeedDown.Parent = mainFrame
-
--- UP
-local btnUp = Instance.new("TextButton")
-btnUp.Size = UDim2.new(0.5, 0, 0, 40)
-btnUp.Position = UDim2.new(0, 0, 0, 160)
-btnUp.Text = "⬆ UP"
-btnUp.Font = Enum.Font.SourceSansBold
-btnUp.TextSize = 18
-btnUp.TextColor3 = Color3.new(1, 1, 1)
-btnUp.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-btnUp.Parent = mainFrame
-
--- DOWN
-local btnDown = Instance.new("TextButton")
-btnDown.Size = UDim2.new(0.5, 0, 0, 40)
-btnDown.Position = UDim2.new(0.5, 0, 0, 160)
-btnDown.Text = "⬇ DOWN"
-btnDown.Font = Enum.Font.SourceSansBold
-btnDown.TextSize = 18
-btnDown.TextColor3 = Color3.new(1, 1, 1)
-btnDown.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-btnDown.Parent = mainFrame
-
--- ❌ Nút đóng
-local btnClose = Instance.new("TextButton")
-btnClose.Size = UDim2.new(1, 0, 0, 40)
-btnClose.Position = UDim2.new(0, 0, 0, 200)
-btnClose.Text = "❌ ĐÓNG"
-btnClose.Font = Enum.Font.SourceSansBold
-btnClose.TextSize = 18
-btnClose.TextColor3 = Color3.new(1, 1, 1)
-btnClose.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-btnClose.Parent = mainFrame
-
--- 🎯 Fly Function
-local hrp = player.Character:WaitForChild("HumanoidRootPart")
-local flyingVel = Instance.new("BodyVelocity")
-flyingVel.MaxForce = Vector3.new()
-flyingVel.Velocity = Vector3.new()
-
-local flyingGyro = Instance.new("BodyGyro")
-flyingGyro.MaxTorque = Vector3.new()
-flyingGyro.CFrame = hrp.CFrame
-
-local function startFly()
-	flying = true
-	flyingVel.Parent = hrp
-	flyingGyro.Parent = hrp
-	flyingVel.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-	flyingGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+-- Hàm tạo nút
+local function createButton(name, text, pos, size)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Text = text
+	btn.Size = size
+	btn.Position = pos
+	btn.BackgroundColor3 = rainbowColors[1]
+	btn.BorderSizePixel = 4
+	btn.TextScaled = true
+	btn.Parent = gui
+	btn.Font = Enum.Font.GothamBold
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.BackgroundTransparency = 0.1
+	btn.AutoButtonColor = false
+	btn.BorderColor3 = rainbowColors[1]
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.ZIndex = 2
+	btn.TextStrokeTransparency = 0.5
+	return btn
 end
 
-local function stopFly()
-	flying = false
-	flyingVel.MaxForce = Vector3.new()
-	flyingGyro.MaxTorque = Vector3.new()
-end
+-- Nút
+local btnFlyOn = createButton("FlyOn", "Bật Bay", UDim2.new(0.9, 0, 0.6, 0), UDim2.new(0.15, 0, 0.08, 0))
+local btnFlyOff = createButton("FlyOff", "Tắt Bay", UDim2.new(0.9, 0, 0.7, 0), UDim2.new(0.15, 0, 0.08, 0))
+local btnUp = createButton("Up", "UP", UDim2.new(0.9, 0, 0.45, 0), UDim2.new(0.15, 0, 0.08, 0))
+local btnDown = createButton("Down", "DOWN", UDim2.new(0.9, 0, 0.55, 0), UDim2.new(0.15, 0, 0.08, 0))
+local btnPlus = createButton("Plus", "+", UDim2.new(0.78, 0, 0.6, 0), UDim2.new(0.1, 0, 0.08, 0))
+local btnMinus = createButton("Minus", "-", UDim2.new(0.78, 0, 0.7, 0), UDim2.new(0.1, 0, 0.08, 0))
 
--- 📌 Nút
-btnFlyOn.MouseButton1Click:Connect(startFly)
-btnFlyOff.MouseButton1Click:Connect(stopFly)
-
-btnSpeedUp.MouseButton1Click:Connect(function()
-	speed = speed + 5
-	speedLabel.Text = "Tốc độ: " .. speed
+-- Cập nhật màu liên tục
+RS.RenderStepped:Connect(function()
+	colorIndex = colorIndex % #rainbowColors + 1
+	local color = rainbowColors[colorIndex]
+	for _, button in pairs(gui:GetChildren()) do
+		if button:IsA("TextButton") then
+			button.BackgroundColor3 = color
+			button.BorderColor3 = color
+		end
+	end
 end)
 
-btnSpeedDown.MouseButton1Click:Connect(function()
-	speed = math.max(5, speed - 5)
-	speedLabel.Text = "Tốc độ: " .. speed
+-- Bay
+local function fly()
+	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+	local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+	if not hrp or not humanoid then return end
+
+	local bv = Instance.new("BodyVelocity")
+	bv.Velocity = Vector3.new(0,0,0)
+	bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	bv.Parent = hrp
+
+	local bg = Instance.new("BodyGyro")
+	bg.CFrame = hrp.CFrame
+	bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bg.Parent = hrp
+
+	RS.RenderStepped:Connect(function()
+		if flying then
+			local camCF = workspace.CurrentCamera.CFrame
+			local moveDir = humanoid.MoveDirection
+			bv.Velocity = (camCF.LookVector * moveDir.Z + camCF.RightVector * moveDir.X) * flySpeed + Vector3.new(0, bv.Velocity.Y, 0)
+			bg.CFrame = CFrame.new(hrp.Position, hrp.Position + camCF.LookVector)
+		else
+			bv:Destroy()
+			bg:Destroy()
+		end
+	end)
+end
+
+-- Sự kiện nút
+btnFlyOn.MouseButton1Click:Connect(function()
+	flying = true
+	fly()
+end)
+
+btnFlyOff.MouseButton1Click:Connect(function()
+	flying = false
 end)
 
 btnUp.MouseButton1Click:Connect(function()
 	if flying then
-		hrp.CFrame = hrp.CFrame + Vector3.new(0, upDownSpeed, 0)
+		local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.Velocity = hrp.Velocity + Vector3.new(0, flyHeightSpeed, 0)
+		end
 	end
 end)
 
 btnDown.MouseButton1Click:Connect(function()
 	if flying then
-		hrp.CFrame = hrp.CFrame - Vector3.new(0, upDownSpeed, 0)
+		local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.Velocity = hrp.Velocity - Vector3.new(0, flyHeightSpeed, 0)
+		end
 	end
 end)
 
-btnClose.MouseButton1Click:Connect(function()
-	gui:Destroy()
+btnPlus.MouseButton1Click:Connect(function()
+	flySpeed = flySpeed + 5
 end)
 
--- 🎮 Điều khiển khi bay
-rs.RenderStepped:Connect(function()
-	if flying then
-		local camCF = workspace.CurrentCamera.CFrame
-		local move = Vector3.new()
-
-		if uis:IsKeyDown(Enum.KeyCode.W) then
-			move = move + camCF.LookVector
-		end
-		if uis:IsKeyDown(Enum.KeyCode.S) then
-			move = move - camCF.LookVector
-		end
-		if uis:IsKeyDown(Enum.KeyCode.A) then
-			move = move - camCF.RightVector
-		end
-		if uis:IsKeyDown(Enum.KeyCode.D) then
-			move = move + camCF.RightVector
-		end
-		if uis:IsKeyDown(Enum.KeyCode.Space) then
-			move = move + Vector3.new(0, 1, 0)
-		end
-		if uis:IsKeyDown(Enum.KeyCode.LeftShift) then
-			move = move - Vector3.new(0, 1, 0)
-		end
-
-		flyingVel.Velocity = move * speed
-		flyingGyro.CFrame = camCF
-	end
-
-	-- 🌈 Rainbow UI
-	mainFrame.BorderColor3 = rainbowColor(0)
-	btnFlyOn.BackgroundColor3 = rainbowColor(0.1)
-	btnFlyOff.BackgroundColor3 = rainbowColor(0.2)
-	btnSpeedUp.BackgroundColor3 = rainbowColor(0.3)
-	btnSpeedDown.BackgroundColor3 = rainbowColor(0.4)
-	btnUp.BackgroundColor3 = rainbowColor(0.5)
-	btnDown.BackgroundColor3 = rainbowColor(0.6)
-	btnClose.BackgroundColor3 = rainbowColor(0.7)
+btnMinus.MouseButton1Click:Connect(function()
+	flySpeed = math.max(5, flySpeed - 5)
 end)
