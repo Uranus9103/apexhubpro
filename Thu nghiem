@@ -1,237 +1,125 @@
--- Fly GUI Mobile - 6DOF | Speed 1 -> Infinity
--- Put this LocalScript in StarterGui
+-- LocalScript trong StarterGui
+local player = game.Players.LocalPlayer
+local uis = game:GetService("UserInputService")
+local rs = game:GetService("RunService")
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+-- Tạo ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "FlyGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
--- ========= CONFIG =========
-local SPEED_START = 50              -- tốc độ mặc định khi bật bay
-local SPEED_STEP  = 5               -- mỗi lần +/-
-local MIN_SPEED   = 1               -- tối thiểu
-local RAINBOW_HZ  = 1.5             -- tốc độ đổi màu (Hz)
+-- Cụm nút di chuyển (draggable frame)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 250, 0, 250)
+mainFrame.Position = UDim2.new(0.7, 0, 0.5, 0)
+mainFrame.BackgroundTransparency = 1
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = gui
 
--- ========= STATE =========
-local gui, mainFrame
-local btnOn, btnOff, btnUp, btnDown, btnPlus, btnMinus, speedLabel
-local flyConn, uiConn
+-- Hàm tạo nút
+local function createButton(name, text, posX, posY)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Size = UDim2.new(0, 80, 0, 80)
+	btn.Position = UDim2.new(0, posX, 0, posY)
+	btn.Text = text
+	btn.TextScaled = true
+	btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	btn.BorderSizePixel = 4
+	btn.Parent = mainFrame
+	return btn
+end
+
+-- Tạo nút
+local upBtn = createButton("Up", "↑", 85, 0)
+local downBtn = createButton("Down", "↓", 85, 170)
+local toggleBtn = createButton("Toggle", "Bật", 85, 85)
+local plusBtn = createButton("Plus", "+", 170, 0)
+local minusBtn = createButton("Minus", "-", 0, 0)
+
+-- Hiệu ứng cầu vồng
+local function rainbow(btn)
+	spawn(function()
+		while true do
+			for hue = 0, 255, 4 do
+				btn.BackgroundColor3 = Color3.fromHSV(hue/255, 1, 1)
+				btn.BorderColor3 = Color3.fromHSV((hue+50)/255, 1, 1)
+				task.wait(0.03)
+			end
+		end
+	end)
+end
+
+rainbow(upBtn)
+rainbow(downBtn)
+rainbow(toggleBtn)
+rainbow(plusBtn)
+rainbow(minusBtn)
+
+-- Fly system
 local flying = false
-local ascend = 0        -- -1 xuống | 0 đứng | 1 lên (giữ nút)
-local speed  = SPEED_START
-local hrp, humanoid
-local bv, bg  -- BodyVelocity + BodyGyro
+local speed = 50
+local velocity = Vector3.zero
 
--- ========= UTILS =========
-local function rainbow(t, shift)
-    local h = (t*RAINBOW_HZ + (shift or 0))%1
-    return Color3.fromHSV(h, 1, 1)
-end
+toggleBtn.MouseButton1Click:Connect(function()
+	flying = not flying
+	toggleBtn.Text = flying and "Tắt" or "Bật"
+	if not flying then
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			player.Character.HumanoidRootPart.Anchored = false
+		end
+	end
+end)
 
-local function setButtonStyle(btn, color)
-    btn.BackgroundColor3 = color
-    btn.BorderColor3 = color
-end
+plusBtn.MouseButton1Click:Connect(function()
+	speed = speed + 10
+end)
 
-local function buildGUI()
-    if gui then gui:Destroy() end
+minusBtn.MouseButton1Click:Connect(function()
+	speed = math.max(1, speed - 10)
+end)
 
-    gui = Instance.new("ScreenGui")
-    gui.Name = "FlyGUI_Mobile"
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- Điều khiển bay
+local movingUp = false
+local movingDown = false
 
-    mainFrame = Instance.new("Frame")
-    mainFrame.Name = "Panel"
-    mainFrame.Size = UDim2.new(0, 230, 0, 320)
-    mainFrame.Position = UDim2.new(0.80, 0, 0.45, 0) -- phải màn hình
-    mainFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-    mainFrame.BackgroundTransparency = 0.15
-    mainFrame.BorderSizePixel = 4
-    mainFrame.Parent = gui
-    local corner = Instance.new("UICorner", mainFrame) corner.CornerRadius = UDim.new(0,14)
+upBtn.MouseButton1Down:Connect(function() movingUp = true end)
+upBtn.MouseButton1Up:Connect(function() movingUp = false end)
+downBtn.MouseButton1Down:Connect(function() movingDown = true end)
+downBtn.MouseButton1Up:Connect(function() movingDown = false end)
 
-    local title = Instance.new("TextLabel")
-    title.BackgroundTransparency = 1
-    title.Size = UDim2.new(1, 0, 0, 32)
-    title.Position = UDim2.new(0, 0, 0, 6)
-    title.Text = "FLY MOBILE"
-    title.TextColor3 = Color3.new(1,1,1)
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.Parent = mainFrame
+rs.RenderStepped:Connect(function()
+	if flying and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		local hrp = player.Character.HumanoidRootPart
+		local camCF = workspace.CurrentCamera.CFrame
+		local moveDir = Vector3.zero
 
-    local function newBtn(name, text, y)
-        local b = Instance.new("TextButton")
-        b.Name = name
-        b.Size = UDim2.new(1, -20, 0, 40)
-        b.Position = UDim2.new(0, 10, 0, y)
-        b.Text = text
-        b.TextScaled = true
-        b.Font = Enum.Font.GothamBold
-        b.TextColor3 = Color3.new(1,1,1)
-        b.BackgroundColor3 = Color3.fromRGB(50,50,50)
-        b.BorderSizePixel = 3
-        b.Parent = mainFrame
-        local c = Instance.new("UICorner", b) c.CornerRadius = UDim.new(0,10)
-        b.AutoButtonColor = false
-        return b
-    end
+		if uis:IsKeyDown(Enum.KeyCode.W) then
+			moveDir = moveDir + camCF.LookVector
+		end
+		if uis:IsKeyDown(Enum.KeyCode.S) then
+			moveDir = moveDir - camCF.LookVector
+		end
+		if uis:IsKeyDown(Enum.KeyCode.A) then
+			moveDir = moveDir - camCF.RightVector
+		end
+		if uis:IsKeyDown(Enum.KeyCode.D) then
+			moveDir = moveDir + camCF.RightVector
+		end
+		if movingUp then
+			moveDir = moveDir + Vector3.new(0, 1, 0)
+		end
+		if movingDown then
+			moveDir = moveDir - Vector3.new(0, 1, 0)
+		end
 
-    -- Bật/Tắt
-    btnOn    = newBtn("FlyOn",  "🚀 BẬT BAY",  44)
-    btnOff   = newBtn("FlyOff", "🛑 TẮT BAY",  88)
+		if moveDir.Magnitude > 0 then
+			moveDir = moveDir.Unit
+		end
 
-    -- Speed label
-    speedLabel = Instance.new("TextLabel")
-    speedLabel.Size = UDim2.new(1, -20, 0, 28)
-    speedLabel.Position = UDim2.new(0, 10, 0, 132)
-    speedLabel.BackgroundTransparency = 1
-    speedLabel.Text = "Tốc độ: " .. tostring(speed)
-    speedLabel.TextScaled = true
-    speedLabel.Font = Enum.Font.GothamBold
-    speedLabel.TextColor3 = Color3.new(1,1,1)
-    speedLabel.Parent = mainFrame
-
-    -- + / -
-    btnPlus  = newBtn("Plus",  "+ Tăng tốc",  162)
-    btnMinus = newBtn("Minus", "− Giảm tốc", 206)
-
-    -- UP / DOWN (giữ để bay mượt)
-    btnUp    = newBtn("Up",    "⬆ UP (giữ)",   250)
-    btnDown  = newBtn("Down",  "⬇ DOWN (giữ)", 294)
-
-    -- Rainbow for UI (single connection)
-    if uiConn then uiConn:Disconnect() end
-    uiConn = RunService.RenderStepped:Connect(function()
-        local t = tick()
-        mainFrame.BorderColor3 = rainbow(t, 0.00)
-        setButtonStyle(btnOn,    rainbow(t, 0.05))
-        setButtonStyle(btnOff,   rainbow(t, 0.10))
-        setButtonStyle(btnPlus,  rainbow(t, 0.15))
-        setButtonStyle(btnMinus, rainbow(t, 0.20))
-        setButtonStyle(btnUp,    rainbow(t, 0.25))
-        setButtonStyle(btnDown,  rainbow(t, 0.30))
-    end)
-end
-
-local function attachForces()
-    if not hrp then return end
-    if bv then bv:Destroy() bv=nil end
-    if bg then bg:Destroy() bg=nil end
-
-    -- BodyVelocity: không clamp MaxForce theo speed (cho phép "vô hạn")
-    bv = Instance.new("BodyVelocity")
-    bv.Velocity = Vector3.zero
-    bv.MaxForce = Vector3.new(1e9, 1e9, 1e9) -- rất lớn để đáp ứng speed cao
-    bv.P = 1e4
-    bv.Parent = hrp
-
-    -- BodyGyro: giữ hướng theo camera cho cảm giác “bay”
-    bg = Instance.new("BodyGyro")
-    bg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-    bg.P = 1e5
-    bg.CFrame = workspace.CurrentCamera.CFrame
-    bg.Parent = hrp
-end
-
-local function startFly()
-    if flying then return end
-    if not hrp or not humanoid then return end
-    flying = true
-    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-    humanoid.AutoRotate = false
-    attachForces()
-
-    -- Loop update (single connection)
-    if flyConn then flyConn:Disconnect() end
-    flyConn = RunService.RenderStepped:Connect(function()
-        if not flying or not hrp or not humanoid then return end
-
-        -- Camera axes
-        local cam = workspace.CurrentCamera
-        local cf  = cam.CFrame
-        local look = cf.LookVector
-        local right = cf.RightVector
-
-        -- Tiến/Lùi/Trái/Phải lấy từ joystick (MoveDirection)
-        local move2D = humanoid.MoveDirection
-        -- Convert (MoveDirection.X,Z) vào frame camera
-        local planar = (right * move2D.X) + (look * move2D.Z)
-
-        -- Thành phần đứng (UP/DOWN giữ nút)
-        local vertical = Vector3.new(0, ascend * speed, 0)
-
-        -- Vận tốc tổng
-        local planarVel = Vector3.zero
-        if planar.Magnitude > 0 then
-            planarVel = planar.Unit * speed
-        end
-
-        -- Cập nhật
-        if bv then bv.Velocity = planarVel + vertical end
-        if bg then bg.CFrame = CFrame.new(hrp.Position, hrp.Position + look) end
-    end)
-end
-
-local function stopFly()
-    if not flying then return end
-    flying = false
-    ascend = 0
-    if flyConn then flyConn:Disconnect() flyConn = nil end
-    if bv then bv:Destroy() bv=nil end
-    if bg then bg:Destroy() bg=nil end
-    if humanoid then
-        humanoid.AutoRotate = true
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
-    if hrp then
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end
-end
-
--- ========= BUTTON EVENTS (include mobile hold) =========
-local function connectButtons()
-    btnOn.MouseButton1Click:Connect(function()
-        startFly()
-    end)
-    btnOff.MouseButton1Click:Connect(function()
-        stopFly()
-    end)
-
-    btnPlus.MouseButton1Click:Connect(function()
-        speed = math.max(MIN_SPEED, speed + SPEED_STEP)
-        speedLabel.Text = "Tốc độ: " .. tostring(speed)
-    end)
-    btnMinus.MouseButton1Click:Connect(function()
-        speed = math.max(MIN_SPEED, speed - SPEED_STEP)
-        speedLabel.Text = "Tốc độ: " .. tostring(speed)
-    end)
-
-    -- UP/DOWN giữ để bay mượt
-    btnUp.MouseButton1Down:Connect(function() ascend = 1 end)
-    btnUp.MouseButton1Up:Connect(function() if ascend == 1 then ascend = 0 end end)
-    btnDown.MouseButton1Down:Connect(function() ascend = -1 end)
-    btnDown.MouseButton1Up:Connect(function() if ascend == -1 then ascend = 0 end end)
-
-    -- Phòng trường hợp ngón trượt khỏi nút (mobile)
-    btnUp.TouchLeave:Connect(function() if ascend == 1 then ascend = 0 end end)
-    btnDown.TouchLeave:Connect(function() if ascend == -1 then ascend = 0 end end)
-end
-
--- ========= CHARACTER (respawn safe) =========
-local function onCharacter(char)
-    humanoid = char:WaitForChild("Humanoid")
-    hrp = char:WaitForChild("HumanoidRootPart")
-    stopFly()
-end
-
--- ========= INIT =========
-buildGUI()
-connectButtons()
-
-if LocalPlayer.Character then onCharacter(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(onCharacter)
-
--- Tip: Nếu muốn mặc định bật bay khi vào game, gọi startFly() ở đây.
+		hrp.Velocity = moveDir * speed
+		hrp.Anchored = false
+	end
+end)
