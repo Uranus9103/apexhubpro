@@ -1,156 +1,283 @@
--- LocalScript trong StarterGui
+--// Fly GUI V3 - LocalScript in StarterGui
 
---== CONFIG ==--
-local CorrectKey = "VanThanhIOS"
-local KeyLink = "https://link-lay-key-cua-ban.com"
+-- ============== Helpers ==============
+local Players = game:GetService("Players")
+local UIS     = game:GetService("UserInputService")
+local RS      = game:GetService("RunService")
+local player  = Players.LocalPlayer
+local char    = player.Character or player.CharacterAdded:Wait()
+local hum     = char:WaitForChild("Humanoid")
+local hrp     = char:WaitForChild("HumanoidRootPart")
 
-local player = game.Players.LocalPlayer
-local gui = Instance.new("ScreenGui", player.PlayerGui)
+-- Rainbow animator for UIStroke and/or BackgroundColor3
+local function RainbowBorder(obj, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Thickness = thickness or 2
+    stroke.Parent = obj
+    task.spawn(function()
+        local h=0
+        while obj and obj.Parent do
+            h = (h + 0.0035) % 1
+            stroke.Color = Color3.fromHSV(h,1,1)
+            task.wait(0.03)
+        end
+    end)
+    return stroke
+end
+
+local function RainbowBackground(inst)
+    task.spawn(function()
+        local h=0
+        while inst and inst.Parent do
+            h=(h+0.0035)%1
+            inst.BackgroundColor3 = Color3.fromHSV(h,0.8,1)
+            task.wait(0.03)
+        end
+    end)
+end
+
+-- Draggable frame (mobile + PC)
+local function MakeDraggable(frame)
+    local dragging, dragStart, startPos
+    frame.InputBegan:Connect(function(inp)
+        if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = inp.Position
+            startPos  = frame.Position
+            inp.Changed:Connect(function()
+                if inp.UserInputState==Enum.UserInputState.End then dragging=false end
+            end)
+        end
+    end)
+    frame.InputChanged:Connect(function(inp)
+        if inp.UserInputType==Enum.UserInputType.MouseMovement or inp.UserInputType==Enum.UserInputType.Touch then
+            if dragging then
+                local delta = inp.Position - dragStart
+                frame.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end
+    end)
+end
+
+-- ============== GUI ==============
+local gui = Instance.new("ScreenGui")
+gui.Name = "FlyGUI_V3"
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
 
---== UI GET KEY ==--
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 340, 0, 180)
-frame.Position = UDim2.new(0.5, -170, 0.5, -90)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BackgroundTransparency = 0.05
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 360, 0, 150)
+frame.Position = UDim2.new(0.5, -180, 0.75, -75)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+RainbowBorder(frame, 3)
+MakeDraggable(frame)
 
--- Bo góc + Đổ bóng
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 15)
-local shadow = Instance.new("ImageLabel", frame)
-shadow.Name = "Shadow"
-shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-shadow.Position = UDim2.new(0.5, 0, 0.5, 8)
-shadow.Size = UDim2.new(1.1, 0, 1.3, 0)
+-- soft shadow
+local shadow = Instance.new("ImageLabel")
 shadow.BackgroundTransparency = 1
-shadow.Image = "rbxassetid://1316045217"
-shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-shadow.ImageTransparency = 0.5
+shadow.Image = "rbxassetid://5028857084"
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(24,24,276,276)
+shadow.Size = UDim2.new(1, 24, 1, 24)
+shadow.Position = UDim2.new(0, -12, 0, -12)
+shadow.ImageTransparency = 0.35
 shadow.ZIndex = -1
+shadow.Parent = frame
 
--- Viền đổi màu mượt
-local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 3
-task.spawn(function()
-	local hue = 0
-	while task.wait() do
-		hue = (hue + 1) % 360
-		stroke.Color = Color3.fromHSV(hue/360, 1, 1)
-	end
-end)
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 40)
+local title = Instance.new("TextLabel")
 title.BackgroundTransparency = 1
-title.Text = "🔑 HỆ THỐNG NHẬP KEY"
+title.Size = UDim2.new(1, -50, 0, 32)
+title.Position = UDim2.new(0, 12, 0, 8)
+title.Text = "FLY GUI V3"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextSize = 20
 title.Font = Enum.Font.GothamBold
-title.TextSize = 22
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = frame
 
-local box = Instance.new("TextBox", frame)
-box.Size = UDim2.new(0.9, 0, 0, 35)
-box.Position = UDim2.new(0.05, 0, 0.35, 0)
-box.PlaceholderText = "Nhập key tại đây..."
-box.Font = Enum.Font.Gotham
-box.TextSize = 18
-box.TextColor3 = Color3.fromRGB(255, 255, 255)
-box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 32, 0, 32)
+closeBtn.Position = UDim2.new(1, -40, 0, 8)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 20
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200,60,60)
+closeBtn.Parent = frame
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,8)
+RainbowBorder(closeBtn, 1.5)
+closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
--- Nút Xác nhận (bên trái)
-local confirmBtn = Instance.new("TextButton", frame)
-confirmBtn.Size = UDim2.new(0.42, 0, 0, 38)
-confirmBtn.Position = UDim2.new(0.05, 0, 0.75, 0)
-confirmBtn.Text = "✅ Xác nhận"
-confirmBtn.Font = Enum.Font.GothamBold
-confirmBtn.TextSize = 18
-confirmBtn.TextColor3 = Color3.new(1,1,1)
-confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 8)
+-- Button factory
+local function NewBtn(txt)
+    local b = Instance.new("TextButton")
+    b.Text = txt
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 18
+    b.TextColor3 = Color3.fromRGB(255,255,255)
+    b.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    b.AutoButtonColor = false
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+    RainbowBorder(b, 1.5)
+    b.MouseEnter:Connect(function() b.BackgroundTransparency = 0.05 end)
+    b.MouseLeave:Connect(function() b.BackgroundTransparency = 0 end)
+    RainbowBackground(b) -- rainbow fill
+    return b
+end
 
--- Hover đổi màu
-confirmBtn.MouseEnter:Connect(function()
-	confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+-- Layout area
+local panel = Instance.new("Frame")
+panel.BackgroundTransparency = 1
+panel.Size = UDim2.new(1, -24, 0, 90)
+panel.Position = UDim2.new(0, 12, 0, 50)
+panel.Parent = frame
+
+local grid = Instance.new("UIGridLayout")
+grid.CellPadding = UDim2.new(0, 8, 0, 8)
+grid.CellSize    = UDim2.new(0.25, -6, 1, 0) -- 4 cột
+grid.FillDirectionMaxCells = 4
+grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+grid.VerticalAlignment   = Enum.VerticalAlignment.Center
+grid.Parent = panel
+
+-- Buttons
+local btnUP    = NewBtn("UP")
+btnUP.Parent   = panel
+local btnPLUS  = NewBtn("+")
+btnPLUS.Parent = panel
+local btnFLY   = NewBtn("FLY")
+btnFLY.Parent  = panel
+local speedBox = NewBtn("SPEED")
+speedBox.Parent = panel
+
+local btnDOWN  = NewBtn("DOWN")
+btnDOWN.Parent = panel
+local btnMINUS = NewBtn("-")
+btnMINUS.Parent = panel
+local btnInfo  = Instance.new("TextLabel")
+btnInfo.BackgroundColor3 = Color3.fromRGB(35,35,35)
+btnInfo.TextColor3 = Color3.fromRGB(255,255,255)
+btnInfo.Font = Enum.Font.GothamBold
+btnInfo.TextSize = 18
+btnInfo.Text = "0"
+btnInfo.Parent = panel
+Instance.new("UICorner", btnInfo).CornerRadius = UDim.new(0,10)
+RainbowBorder(btnInfo, 1.5)
+RainbowBackground(btnInfo)
+
+local filler = Instance.new("Frame") -- chỗ trống cân lưới
+filler.BackgroundTransparency = 1
+filler.Parent = panel
+
+-- ============== Fly Logic ==============
+local flying = false
+local speed  = 50
+local maxSpeed, minSpeed, step = 250, 10, 10
+btnInfo.Text = tostring(speed)
+
+local bv, bg
+local key = {W=false,S=false,A=false,D=false}
+local ascend = 0 -- -1..1
+
+local function StartFly()
+    if flying then return end
+    flying = true
+    hum:ChangeState(Enum.HumanoidStateType.Physics)
+    hum.AutoRotate = false
+
+    bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bv.Velocity = Vector3.zero
+    bv.Parent = hrp
+
+    bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bg.P = 9e4
+    bg.CFrame = workspace.CurrentCamera.CFrame
+    bg.Parent = hrp
+
+    btnFLY.Text = "FLY (ON)"
+end
+
+local function StopFly()
+    if not flying then return end
+    flying = false
+    hum.AutoRotate = true
+    if bv then bv:Destroy() bv=nil end
+    if bg then bg:Destroy() bg=nil end
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    btnFLY.Text = "FLY (OFF)"
+end
+
+-- Update movement every frame
+RS:BindToRenderStep("FlyUpdate", Enum.RenderPriority.Character.Value+1, function()
+    if not flying then return end
+    if not hrp or not hrp.Parent then return end
+    local camCF = workspace.CurrentCamera.CFrame
+    if bg then bg.CFrame = CFrame.new(hrp.Position, hrp.Position + camCF.LookVector) end
+
+    local move = Vector3.zero
+    if key.W then move += camCF.LookVector end
+    if key.S then move -= camCF.LookVector end
+    if key.A then move -= camCF.RightVector end
+    if key.D then move += camCF.RightVector end
+
+    local vel = Vector3.new(0, ascend * speed, 0)
+    if move.Magnitude > 0 then
+        move = move.Unit * speed
+        vel = vel + Vector3.new(move.X, move.Y, move.Z)
+    end
+    if bv then bv.Velocity = vel end
 end)
-confirmBtn.MouseLeave:Connect(function()
-	confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+
+-- Keyboard control (WASD + Space/LeftControl as UP/DOWN too)
+UIS.InputBegan:Connect(function(inp, gpe)
+    if gpe then return end
+    if inp.KeyCode == Enum.KeyCode.W then key.W=true end
+    if inp.KeyCode == Enum.KeyCode.S then key.S=true end
+    if inp.KeyCode == Enum.KeyCode.A then key.A=true end
+    if inp.KeyCode == Enum.KeyCode.D then key.D=true end
+    if inp.KeyCode == Enum.KeyCode.Space then ascend = 1 end
+    if inp.KeyCode == Enum.KeyCode.LeftControl or inp.KeyCode == Enum.KeyCode.LeftShift then ascend = -1 end
+end)
+UIS.InputEnded:Connect(function(inp)
+    if inp.KeyCode == Enum.KeyCode.W then key.W=false end
+    if inp.KeyCode == Enum.KeyCode.S then key.S=false end
+    if inp.KeyCode == Enum.KeyCode.A then key.A=false end
+    if inp.KeyCode == Enum.KeyCode.D then key.D=false end
+    if inp.KeyCode == Enum.KeyCode.Space and ascend==1 then ascend = 0 end
+    if (inp.KeyCode == Enum.KeyCode.LeftControl or inp.KeyCode == Enum.KeyCode.LeftShift) and ascend==-1 then ascend = 0 end
 end)
 
--- Nút Get Key (bên phải)
-local getKeyBtn = Instance.new("TextButton", frame)
-getKeyBtn.Size = UDim2.new(0.42, 0, 0, 38)
-getKeyBtn.Position = UDim2.new(0.53, 0, 0.75, 0)
-getKeyBtn.Text = "🌐 Get Key"
-getKeyBtn.Font = Enum.Font.GothamBold
-getKeyBtn.TextSize = 18
-getKeyBtn.TextColor3 = Color3.new(1,1,1)
-getKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 85, 170)
-Instance.new("UICorner", getKeyBtn).CornerRadius = UDim.new(0, 8)
-
-getKeyBtn.MouseEnter:Connect(function()
-	getKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 110, 200)
-end)
-getKeyBtn.MouseLeave:Connect(function()
-	getKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 85, 170)
+-- Button events
+btnFLY.MouseButton1Click:Connect(function()
+    if flying then StopFly() else StartFly() end
 end)
 
---== Chức năng nút Get Key ==--
-getKeyBtn.MouseButton1Click:Connect(function()
-	setclipboard(KeyLink)
-	game:GetService("StarterGui"):SetCore("SendNotification",{
-		Title = "Thông báo",
-		Text = "✅ Đã copy link Get Key vào clipboard!",
-		Duration = 4
-	})
+btnPLUS.MouseButton1Click:Connect(function()
+    speed = math.clamp(speed + step, minSpeed, maxSpeed)
+    btnInfo.Text = tostring(speed)
 end)
 
---== Xử lý xác nhận key ==--
-confirmBtn.MouseButton1Click:Connect(function()
-	if box.Text == CorrectKey then
-		frame:Destroy()
-
-		-- Nút chính
-		local btn = Instance.new("TextButton", gui)
-		btn.Size = UDim2.new(0, 220, 0, 65)
-		btn.Position = UDim2.new(0.5, -110, 0.5, -32)
-		btn.Text = "🚀 Chạy Script"
-		btn.Font = Enum.Font.GothamBold
-		btn.TextSize = 22
-		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 15)
-
-		local stroke2 = Instance.new("UIStroke", btn)
-		stroke2.Thickness = 3
-
-		-- Hiệu ứng cầu vồng + viền động + đổ bóng
-		local shadowBtn = Instance.new("ImageLabel", btn)
-		shadowBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-		shadowBtn.Position = UDim2.new(0.5, 0, 0.5, 4)
-		shadowBtn.Size = UDim2.new(1.1, 0, 1.3, 0)
-		shadowBtn.BackgroundTransparency = 1
-		shadowBtn.Image = "rbxassetid://1316045217"
-		shadowBtn.ImageColor3 = Color3.fromRGB(0, 0, 0)
-		shadowBtn.ImageTransparency = 0.5
-		shadowBtn.ZIndex = -1
-
-		task.spawn(function()
-			local hue = 0
-			while task.wait() do
-				hue = (hue + 1) % 360
-				btn.BackgroundColor3 = Color3.fromHSV(hue/360, 0.8, 1)
-				stroke2.Color = Color3.fromHSV((hue+180)%360/360, 1, 1)
-			end
-		end)
-
-		btn.MouseButton1Click:Connect(function()
-			btn:Destroy()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/Scripts/main/BuildAPlane"))()
-		end)
-	else
-		game:GetService("StarterGui"):SetCore("SendNotification",{
-			Title = "❌ Sai Key",
-			Text = "Vui lòng nhập lại!",
-			Duration = 3
-		})
-	end
+btnMINUS.MouseButton1Click:Connect(function()
+    speed = math.clamp(speed - step, minSpeed, maxSpeed)
+    btnInfo.Text = tostring(speed)
 end)
+
+-- Hold to go UP/DOWN (also works on mobile)
+btnUP.MouseButton1Down:Connect(function() ascend = 1 end)
+btnUP.MouseButton1Up:Connect(function() if ascend==1 then ascend = 0 end end)
+btnDOWN.MouseButton1Down:Connect(function() ascend = -1 end)
+btnDOWN.MouseButton1Up:Connect(function() if ascend==-1 then ascend = 0 end end)
+
+-- Start with fly OFF
+btnFLY.Text = "FLY (OFF)"
+btnInfo.Text = tostring(speed)
