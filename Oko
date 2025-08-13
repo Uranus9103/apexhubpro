@@ -1,128 +1,276 @@
--- Key config
+--==== LocalScript in StarterGui =========================================--
+local player = game.Players.LocalPlayer
+
+--================== CẤU HÌNH KEY SYSTEM ==================--
 local KeyConfig = {
-    Enable = true,
-    Title = "Văn Thành IOS / Script Tổng Hợp",
-    KeyLink = "https://your-key-link.com", -- Link lấy key
-    Keys = {"VanThanhIOS"},
-    Notifications = {
-        Correct = "Đang Chạy Kịch Bản",
+    Enable = true, -- Bật/tắt KeySystem
+    Title  = "Văn ThànHh IOS / Script Tổng Hợp",
+    KeyLink = "https://your-key-link.com", -- <<< ĐIỀN LINK LẤY KEY Ở ĐÂY
+    Keys   = {"Thinh"}, -- Danh sách key hợp lệ
+    Noti   = {
+        Correct   = "Đang Chạy Kịch Bản",
         Incorrect = "Mật Khẩu Không Đúng",
-        CopyKeyLink = "Đã Sao Chép"
+        Copied    = "Đã sao chép link key!"
     }
 }
 
--- Hàm tạo hiệu ứng đổi màu liên tục
-local function RainbowEffect(uiElement)
-    task.spawn(function()
-        local hue = 0
-        while task.wait() do
-            hue = (hue + 0.005) % 1
-            uiElement.UIStroke.Color = Color3.fromHSV(hue, 1, 1)
-        end
+--================== HÀM PHỤ TRỢ ==================--
+local function notify(txt)
+    pcall(function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = KeyConfig.Title, Text = txt, Duration = 3
+        })
     end)
 end
 
--- Tạo UI KeySystem
-if KeyConfig.Enable then
-    local player = game.Players.LocalPlayer
+-- Viền đổi màu liên tục
+local function rainbowBorder(uiObject, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Thickness = thickness or 2
+    stroke.Parent = uiObject
+
+    task.spawn(function()
+        local h = 0
+        while uiObject and uiObject.Parent do
+            h = (h + 0.005) % 1
+            stroke.Color = Color3.fromHSV(h, 1, 1)
+            task.wait(0.03)
+        end
+    end)
+    return stroke
+end
+
+--================== UI CHÍNH ==================--
+local function createMainUI()
     local gui = Instance.new("ScreenGui")
-    gui.Parent = player.PlayerGui
+    gui.Name = "SubcakeVNScriptUI"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
 
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 320, 0, 160)
-    frame.Position = UDim2.new(0.5, -160, 0.4, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.Size = UDim2.new(0, 300, 0, 180)
+    frame.Position = UDim2.new(0.5, -150, 0.4, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+    -- Đổ bóng nhẹ
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://5028857084"
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(24, 24, 276, 276)
+    shadow.Size = UDim2.new(1, 20, 1, 20)
+    shadow.Position = UDim2.new(0, -10, 0, -10)
+    shadow.ImageTransparency = 0.4
+    shadow.ZIndex = -1
+    shadow.Parent = frame
+
+    rainbowBorder(frame, 2) -- Viền đổi màu liên tục
+
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Text = "APEX PREMIUM"
+    title.TextColor3 = Color3.fromRGB(255,255,255)
+    title.TextSize = 21
+    title.Font = Enum.Font.GothamBold
+    title.Parent = frame
+
+    -- Tạo switch có hiệu ứng màu
+    local function createSwitch(parent, yPos, labelText)
+        local holder = Instance.new("Frame")
+        holder.BackgroundTransparency = 1
+        holder.Size = UDim2.new(1, -24, 0, 46)
+        holder.Position = UDim2.new(0, 12, 0, yPos)
+        holder.Parent = parent
+
+        local label = Instance.new("TextLabel")
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.new(0, 110, 1, 0)
+        label.Text = labelText
+        label.TextColor3 = Color3.fromRGB(230,230,230)
+        label.TextSize = 18
+        label.Font = Enum.Font.Gotham
+        label.Parent = holder
+
+        local toggleBG = Instance.new("Frame")
+        toggleBG.Size = UDim2.new(0, 96, 0, 34)
+        toggleBG.Position = UDim2.new(0, 120, 0.5, -17)
+        toggleBG.BackgroundColor3 = Color3.fromRGB(180,40,40)
+        toggleBG.BorderSizePixel = 0
+        toggleBG.Parent = holder
+        Instance.new("UICorner", toggleBG).CornerRadius = UDim.new(1, 0)
+
+        local knob = Instance.new("Frame")
+        knob.Size = UDim2.new(0, 34, 0, 34)
+        knob.Position = UDim2.new(0, 0, 0, 0)
+        knob.BackgroundColor3 = Color3.fromRGB(255,255,255)
+        knob.BorderSizePixel = 0
+        knob.ZIndex = 2
+        knob.Parent = toggleBG
+        Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+        local knobStroke = Instance.new("UIStroke", knob)
+        knobStroke.Thickness = 2
+        knobStroke.Color = Color3.fromRGB(80,80,80)
+
+        local state = false
+
+        -- Đổi màu nền liên tục theo trạng thái
+        task.spawn(function()
+            local h = 0
+            while toggleBG and toggleBG.Parent do
+                h = (h + 0.005) % 1
+                if state then
+                    -- Khi BẬT: cầu vồng tươi
+                    toggleBG.BackgroundColor3 = Color3.fromHSV(h, 0.65, 1)
+                else
+                    -- Khi TẮT: gam ấm dịu (đỏ-cam)
+                    toggleBG.BackgroundColor3 = Color3.fromHSV((h*0.15)%1, 0.85, 0.8)
+                end
+                task.wait(0.03)
+            end
+        end)
+
+        local function setState(newState, animate)
+            state = newState
+            local target = state and UDim2.new(1, -34, 0, 0) or UDim2.new(0, 0, 0, 0)
+            if animate then
+                knob:TweenPosition(target, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15, true)
+            else
+                knob.Position = target
+            end
+        end
+
+        local function toggle()
+            setState(not state, true)
+            -- chỗ này bạn gắn logic thật của nút nếu cần
+            -- if state then ... else ... end
+        end
+
+        knob.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                toggle()
+            end
+        end)
+        toggleBG.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                toggle()
+            end
+        end)
+
+        -- trạng thái mặc định
+        setState(false, false)
+        return {GetState = function() return state end, SetState = setState}
+    end
+
+    createSwitch(frame, 46, "Trade Freeze")
+    createSwitch(frame, 98, "Force Accept")
+end
+
+--================== UI NHẬP KEY ==================--
+local function createKeyUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "KeySystemUI"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 330, 0, 190)
+    frame.Position = UDim2.new(0.5, -165, 0.5, -95)
+    frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    frame.BorderSizePixel = 0
     frame.Parent = gui
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
-    -- Viền đổi màu
-    local stroke = Instance.new("UIStroke", frame)
-    stroke.Thickness = 2
-    RainbowEffect(frame)
+    rainbowBorder(frame, 2) -- Viền đổi màu liên tục
 
     local title = Instance.new("TextLabel")
-    title.Text = KeyConfig.Title
-    title.Size = UDim2.new(1, 0, 0, 40)
     title.BackgroundTransparency = 1
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Text = KeyConfig.Title
+    title.TextColor3 = Color3.fromRGB(255,255,255)
     title.TextSize = 18
     title.Font = Enum.Font.GothamBold
     title.Parent = frame
 
     local input = Instance.new("TextBox")
-    input.Size = UDim2.new(0.9, 0, 0, 36)
-    input.Position = UDim2.new(0.05, 0, 0.4, 0)
-    input.PlaceholderText = "Nhập key vào đây..."
+    input.Size = UDim2.new(0.9, 0, 0, 38)
+    input.Position = UDim2.new(0.05, 0, 0.40, -8)
+    input.PlaceholderText = "Nhập key..."
     input.Text = ""
     input.TextSize = 16
     input.Font = Enum.Font.Gotham
-    input.TextColor3 = Color3.new(1, 1, 1)
-    input.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
-    local stroke2 = Instance.new("UIStroke", input)
-    stroke2.Thickness = 1.5
-    RainbowEffect(input)
+    input.TextColor3 = Color3.new(1,1,1)
+    input.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    input.BorderSizePixel = 0
     input.Parent = frame
+    Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
+    rainbowBorder(input, 1.5)
 
-    -- Nút xác nhận (trái)
+    -- NÚT XÁC NHẬN (TRÁI)
     local confirmBtn = Instance.new("TextButton")
-    confirmBtn.Size = UDim2.new(0.4, -5, 0, 32)
+    confirmBtn.Size = UDim2.new(0.42, -5, 0, 34)
     confirmBtn.Position = UDim2.new(0.05, 0, 0.75, 0)
     confirmBtn.Text = "Xác nhận"
-    confirmBtn.Font = Enum.Font.GothamBold
     confirmBtn.TextSize = 16
-    confirmBtn.TextColor3 = Color3.new(1, 1, 1)
-    confirmBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 6)
-    RainbowEffect(confirmBtn)
+    confirmBtn.Font = Enum.Font.GothamBold
+    confirmBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    confirmBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    confirmBtn.BorderSizePixel = 0
     confirmBtn.Parent = frame
+    Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 6)
+    rainbowBorder(confirmBtn, 1.5)
 
-    -- Nút Get Key (phải)
+    -- NÚT GET KEY (PHẢI)
     local getKeyBtn = Instance.new("TextButton")
-    getKeyBtn.Size = UDim2.new(0.4, -5, 0, 32)
-    getKeyBtn.Position = UDim2.new(0.55, 0, 0.75, 0)
+    getKeyBtn.Size = UDim2.new(0.42, -5, 0, 34)
+    getKeyBtn.Position = UDim2.new(0.53, 0, 0.75, 0)
     getKeyBtn.Text = "Get Key"
-    getKeyBtn.Font = Enum.Font.GothamBold
     getKeyBtn.TextSize = 16
-    getKeyBtn.TextColor3 = Color3.new(1, 1, 1)
-    getKeyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    Instance.new("UICorner", getKeyBtn).CornerRadius = UDim.new(0, 6)
-    RainbowEffect(getKeyBtn)
+    getKeyBtn.Font = Enum.Font.GothamBold
+    getKeyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    getKeyBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    getKeyBtn.BorderSizePixel = 0
     getKeyBtn.Parent = frame
+    Instance.new("UICorner", getKeyBtn).CornerRadius = UDim.new(0, 6)
+    rainbowBorder(getKeyBtn, 1.5)
 
-    -- Sự kiện
+    -- Sự kiện Get Key: copy link (bọc pcall để tránh lỗi môi trường)
+    getKeyBtn.MouseButton1Click:Connect(function()
+        if KeyConfig.KeyLink and KeyConfig.KeyLink ~= "" then
+            pcall(function() setclipboard(KeyConfig.KeyLink) end)
+            notify(KeyConfig.Noti.Copied .. "\n" .. KeyConfig.KeyLink)
+        else
+            notify("Chưa cấu hình KeyLink!")
+        end
+    end)
+
+    -- Sự kiện Xác nhận: kiểm tra key, nếu đúng → mở UI chính
     confirmBtn.MouseButton1Click:Connect(function()
         local entered = input.Text
-        local correct = false
+        local ok = false
         for _, k in ipairs(KeyConfig.Keys) do
-            if entered == k then
-                correct = true
-                break
-            end
+            if entered == k then ok = true break end
         end
-        if correct then
-            frame:Destroy()
-            game.StarterGui:SetCore("SendNotification", {
-                Title = "Thành công",
-                Text = KeyConfig.Notifications.Correct,
-                Duration = 3
-            })
-            -- Gọi code chính ở đây
+        if ok then
+            notify(KeyConfig.Noti.Correct)
+            gui:Destroy()
+            createMainUI()
         else
-            game.StarterGui:SetCore("SendNotification", {
-                Title = "Lỗi",
-                Text = KeyConfig.Notifications.Incorrect,
-                Duration = 3
-            })
+            notify(KeyConfig.Noti.Incorrect)
         end
     end)
+end
 
-    getKeyBtn.MouseButton1Click:Connect(function()
-        setclipboard(KeyConfig.KeyLink)
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "Thông báo",
-            Text = KeyConfig.Notifications.CopyKeyLink,
-            Duration = 3
-        })
-    end)
+--================== KHỞI CHẠY ==================--
+if KeyConfig.Enable then
+    createKeyUI()
+else
+    createMainUI()
 end
