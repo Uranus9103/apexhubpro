@@ -1,0 +1,118 @@
+-- ⚠ Cảnh báo: Đoạn code này tải script từ bên ngoài.
+loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Tạo GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "InvisibleGUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+-- Khung ngoài (viền đổi màu)
+local borderFrame = Instance.new("Frame")
+borderFrame.Size = UDim2.new(0, 160, 0, 60)
+borderFrame.Position = UDim2.new(1, -180, 1, -80)
+borderFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+borderFrame.BorderSizePixel = 0
+borderFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner", borderFrame)
+uiCorner.CornerRadius = UDim.new(0, 10)
+
+-- Hiệu ứng Gradient đổi màu viền
+local uiGradient = Instance.new("UIGradient", borderFrame)
+uiGradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+}
+uiGradient.Rotation = 0
+
+-- Khung trong (nền đen chứa nút)
+local innerFrame = Instance.new("Frame")
+innerFrame.Size = UDim2.new(1, -6, 1, -6)
+innerFrame.Position = UDim2.new(0, 3, 0, 3)
+innerFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+innerFrame.BorderSizePixel = 0
+innerFrame.Parent = borderFrame
+
+local innerCorner = Instance.new("UICorner", innerFrame)
+innerCorner.CornerRadius = UDim.new(0, 8)
+
+-- Nút bấm
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, 0, 1, 0)
+button.Text = "Bật Tàng Hình"
+button.BackgroundTransparency = 1
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = innerFrame
+
+-- Hiệu ứng đổi màu viền liên tục
+task.spawn(function()
+	while task.wait(0.03) do
+		uiGradient.Rotation = (uiGradient.Rotation + 1) % 360
+	end
+end)
+
+-- Biến trạng thái
+local isInvisible = false
+
+-- Hàm bật/tắt tàng hình
+local function setInvisible(state)
+	isInvisible = state
+	for _, part in pairs(character:GetDescendants()) do
+		if part:IsA("BasePart") or part:IsA("Decal") then
+			part.Transparency = state and 1 or 0
+		end
+	end
+end
+
+-- Sự kiện nút
+button.MouseButton1Click:Connect(function()
+	if isInvisible then
+		setInvisible(false)
+		button.Text = "Bật Tàng Hình"
+	else
+		setInvisible(true)
+		button.Text = "Tắt Tàng Hình"
+	end
+end)
+
+-- Giữ trạng thái khi respawn
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	if isInvisible then
+		setInvisible(true)
+	end
+end)
+
+-- Làm nút kéo được
+local UIS = game:GetService("UserInputService")
+local dragging = false
+local dragStart, startPos
+
+borderFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = borderFrame.Position
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		borderFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
