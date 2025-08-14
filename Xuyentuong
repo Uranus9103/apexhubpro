@@ -5,7 +5,6 @@ local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local noclip = false
 
 -- GUI
 local screenGui = Instance.new("ScreenGui")
@@ -24,7 +23,7 @@ corner.CornerRadius = UDim.new(0,10)
 
 local button = Instance.new("TextButton")
 button.Size = UDim2.new(1,0,1,0)
-button.Text = "Bật Xuyên Tường"
+button.Text = "TP Qua Tường"
 button.BackgroundTransparency = 0.5
 button.TextColor3 = Color3.new(1,1,1)
 button.Font = Enum.Font.SourceSansBold
@@ -57,25 +56,28 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
--- Bật/tắt noclip
-button.MouseButton1Click:Connect(function()
-    noclip = not noclip
-    button.Text = noclip and "Tắt Xuyên Tường" or "Bật Xuyên Tường"
-end)
-
--- Noclip liên tục
-RunService.Stepped:Connect(function()
-    if noclip and character then
-        for _, part in pairs(character:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name~="HumanoidRootPart" then
-                part.CanCollide=false
-            end
-        end
+-- Hàm TP qua tường
+local function tpThroughWall()
+    local origin = hrp.Position
+    local direction = hrp.CFrame.LookVector * 6 -- 6 studs phía trước
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local result = workspace:Raycast(origin, direction, rayParams)
+    if result then
+        -- Dịch chuyển ra sau bức tường
+        local newPos = result.Position + result.Normal * 3 -- ra khỏi bức tường 3 studs
+        hrp.CFrame = CFrame.new(newPos, newPos + hrp.CFrame.LookVector)
+    else
+        -- Nếu không có vật cản, dịch chuyển 6 studs bình thường
+        hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * 6
     end
-end)
+end
+
+button.MouseButton1Click:Connect(tpThroughWall)
 
 -- Giữ trạng thái khi respawn
 player.CharacterAdded:Connect(function(newChar)
-    character=newChar
+    character = newChar
     hrp = character:WaitForChild("HumanoidRootPart")
 end)
