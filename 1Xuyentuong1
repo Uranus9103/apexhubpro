@@ -1,0 +1,197 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Trạng thái
+local isInvisible = false
+local speedActive = false
+local speedValue = 50 -- giá trị mặc định
+
+-- ===== GUI =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local borderFrame = Instance.new("Frame")
+borderFrame.Size = UDim2.new(0,220,0,140)
+borderFrame.Position = UDim2.new(1,-240,1,-160)
+borderFrame.BackgroundColor3 = Color3.fromRGB(255,255,255)
+borderFrame.BorderSizePixel = 0
+borderFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner", borderFrame)
+uiCorner.CornerRadius = UDim.new(0,12)
+
+local uiGradient = Instance.new("UIGradient", borderFrame)
+uiGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255,0,0)),
+    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0,255,0)),
+    ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0,0,255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255,0,0))
+}
+uiGradient.Rotation = 0
+
+local innerFrame = Instance.new("Frame")
+innerFrame.Size = UDim2.new(1,-6,1,-6)
+innerFrame.Position = UDim2.new(0,3,0,3)
+innerFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+innerFrame.BorderSizePixel = 0
+innerFrame.Parent = borderFrame
+
+local innerCorner = Instance.new("UICorner", innerFrame)
+innerCorner.CornerRadius = UDim.new(0,10)
+
+-- Nút tàng hình
+local invisButton = Instance.new("TextButton")
+invisButton.Size = UDim2.new(1,0,0.2,0)
+invisButton.Position = UDim2.new(0,0,0,0)
+invisButton.Text = "Bật Tàng Hình"
+invisButton.BackgroundTransparency = 0.1
+invisButton.TextColor3 = Color3.new(1,1,1)
+invisButton.Font = Enum.Font.SourceSansBold
+invisButton.TextSize = 18
+invisButton.Parent = innerFrame
+
+-- Nút TP qua tường
+local tpButton = Instance.new("TextButton")
+tpButton.Size = UDim2.new(1,0,0.2,0)
+tpButton.Position = UDim2.new(0,0,0.22,0)
+tpButton.Text = "TP Qua Tường"
+tpButton.BackgroundTransparency = 0.1
+tpButton.TextColor3 = Color3.new(1,1,1)
+tpButton.Font = Enum.Font.SourceSansBold
+tpButton.TextSize = 18
+tpButton.Parent = innerFrame
+
+-- Nút bật/tắt chạy nhanh
+local speedButton = Instance.new("TextButton")
+speedButton.Size = UDim2.new(1,0,0.15,0)
+speedButton.Position = UDim2.new(0,0,0.44,0)
+speedButton.Text = "Bật Chạy Nhanh"
+speedButton.BackgroundTransparency = 0.1
+speedButton.TextColor3 = Color3.new(1,1,1)
+speedButton.Font = Enum.Font.SourceSansBold
+speedButton.TextSize = 18
+speedButton.Parent = innerFrame
+
+-- Slider điều chỉnh tốc độ
+local sliderFrame = Instance.new("Frame")
+sliderFrame.Size = UDim2.new(1,-20,0,30)
+sliderFrame.Position = UDim2.new(0,10,0.61,0)
+sliderFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+sliderFrame.Parent = innerFrame
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(speedValue/100,0,1,0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0,255,0)
+sliderFill.Parent = sliderFrame
+
+-- ===== Gradient xoay =====
+task.spawn(function()
+    while task.wait(0.03) do
+        uiGradient.Rotation = (uiGradient.Rotation + 1)%360
+    end
+end)
+
+-- ===== Hàm tàng hình =====
+local function setInvisible(state)
+    isInvisible = state
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("Decal") then
+            if part.Name~="HumanoidRootPart" then
+                part.LocalTransparencyModifier = state and 1 or 0
+            end
+        end
+    end
+    invisButton.Text = state and "Tắt Tàng Hình" or "Bật Tàng Hình"
+end
+invisButton.MouseButton1Click:Connect(function() setInvisible(not isInvisible) end)
+
+-- ===== Hàm TP qua tường =====
+local function tpThroughWall()
+    local origin = hrp.Position
+    local direction = hrp.CFrame.LookVector * 6
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local result = workspace:Raycast(origin,direction,rayParams)
+    if result then
+        hrp.CFrame = CFrame.new(result.Position + result.Normal*3, result.Position + result.Normal*3 + hrp.CFrame.LookVector)
+    else
+        hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector*6
+    end
+end
+tpButton.MouseButton1Click:Connect(tpThroughWall)
+
+-- ===== Chạy nhanh =====
+speedButton.MouseButton1Click:Connect(function()
+    speedActive = not speedActive
+    speedButton.Text = speedActive and "Tắt Chạy Nhanh" or "Bật Chạy Nhanh"
+end)
+
+RunService.Stepped:Connect(function()
+    if speedActive and humanoid then
+        humanoid.WalkSpeed = speedValue
+    elseif humanoid then
+        humanoid.WalkSpeed = 16
+    end
+end)
+
+-- ===== Slider thay đổi tốc độ =====
+local draggingSlider = false
+sliderFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = true
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if draggingSlider and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+        local relative = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X)/sliderFrame.AbsoluteSize.X,0,1)
+        sliderFill.Size = UDim2.new(relative,0,1,0)
+        speedValue = math.floor(relative*100)
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = false
+    end
+end)
+
+-- ===== Kéo thả GUI mượt =====
+local dragging=false
+local dragStart,startPos,lastPos
+borderFrame.InputBegan:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        dragging=true
+        dragStart=input.Position
+        startPos=borderFrame.Position
+        lastPos=startPos
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+        local delta=input.Position-startPos.Position
+        local target = UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+        borderFrame.Position = lastPos:Lerp(target,0.3)
+        lastPos=borderFrame.Position
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        dragging=false
+    end
+end)
+
+-- ===== Giữ trạng thái khi respawn =====
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    hrp = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
+    if isInvisible then setInvisible(true) end
+end)
