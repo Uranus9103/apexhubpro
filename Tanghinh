@@ -1,140 +1,102 @@
--- ⚠ Cảnh báo: Script này tải code từ bên ngoài, chỉ dùng nếu link an toàn
-loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+-- Tàng hình tuyệt đối + chạy script GitHub khác
 
--- Tạo RemoteEvent để liên lạc client-server
+-- Chạy thêm script GitHub của bạn
+pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+end)
+
+-- Tạo RemoteEvent cho tàng hình
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local toggleEvent = ReplicatedStorage:FindFirstChild("ToggleInvisibility")
-if not toggleEvent then
-	toggleEvent = Instance.new("RemoteEvent")
-	toggleEvent.Name = "ToggleInvisibility"
-	toggleEvent.Parent = ReplicatedStorage
+local toggleEvent = ReplicatedStorage:FindFirstChild("ToggleInvisibility") or Instance.new("RemoteEvent")
+toggleEvent.Name = "ToggleInvisibility"
+toggleEvent.Parent = ReplicatedStorage
+
+-- Server handler
+if not _G.InvisibleServerSetup then
+    _G.InvisibleServerSetup = true
+    toggleEvent.OnServerEvent:Connect(function(player, state)
+        for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+            if otherPlayer ~= player then
+                toggleEvent:FireClient(otherPlayer, player, state)
+            end
+        end
+    end)
 end
 
--- ===== SERVER PHẦN =====
-if game:GetService("RunService"):IsServer() then
-	toggleEvent.OnServerEvent:Connect(function(player, state)
-		local char = player.Character
-		if not char then return end
-		for _, otherPlayer in pairs(game.Players:GetPlayers()) do
-			local targetChar = player.Character
-			if targetChar then
-				for _, part in pairs(targetChar:GetDescendants()) do
-					if part:IsA("BasePart") or part:IsA("Decal") then
-						part.Transparency = state and 1 or 0
-					end
-				end
-			end
-		end
-	end)
-	return
+-- LocalScript phần tàng hình
+if game:GetService("Players").LocalPlayer then
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    -- GUI nút
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 180, 0, 60)
+    button.Position = UDim2.new(1, -200, 1, -80)
+    button.Text = "Bật Tàng Hình"
+    button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.SourceSansBold
+    button.TextSize = 18
+    button.Parent = screenGui
+
+    -- Viền đổi màu liên tục
+    local uiStroke = Instance.new("UIStroke")
+    uiStroke.Parent = button
+    uiStroke.Thickness = 3
+
+    task.spawn(function()
+        local hue = 0
+        while button.Parent do
+            hue = (hue + 1) % 360
+            uiStroke.Color = Color3.fromHSV(hue / 360, 1, 1)
+            task.wait(0.05)
+        end
+    end)
+
+    -- Cho kéo nút
+    button.Active = true
+    button.Draggable = true
+
+    local isInvisible = false
+
+    -- Hàm ẩn/hiện local
+    local function setLocalInvisible(state)
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Decal") then
+                part.Transparency = state and 1 or 0
+            end
+        end
+    end
+
+    -- Khi bấm nút
+    button.MouseButton1Click:Connect(function()
+        isInvisible = not isInvisible
+        setLocalInvisible(isInvisible)
+        toggleEvent:FireServer(isInvisible)
+        button.Text = isInvisible and "Tắt Tàng Hình" or "Bật Tàng Hình"
+    end)
+
+    -- Khi nhận lệnh từ server → ẩn/hiện người khác
+    toggleEvent.OnClientEvent:Connect(function(targetPlayer, state)
+        local char = targetPlayer.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("Decal") then
+                    part.Transparency = state and 1 or 0
+                end
+            end
+        end
+    end)
+
+    -- Giữ trạng thái khi respawn
+    player.CharacterAdded:Connect(function(newChar)
+        character = newChar
+        if isInvisible then
+            setLocalInvisible(true)
+            toggleEvent:FireServer(true)
+        end
+    end)
 end
-
--- ===== CLIENT PHẦN =====
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-
--- GUI nút
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "InvisibleGUI"
-screenGui.Parent = player:WaitForChild("PlayerGui")
-screenGui.ResetOnSpawn = false
-
--- Khung viền
-local borderFrame = Instance.new("Frame")
-borderFrame.Size = UDim2.new(0, 160, 0, 60)
-borderFrame.Position = UDim2.new(1, -180, 1, -80)
-borderFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-borderFrame.BorderSizePixel = 0
-borderFrame.Parent = screenGui
-Instance.new("UICorner", borderFrame).CornerRadius = UDim.new(0, 10)
-
--- Gradient đổi màu viền
-local uiGradient = Instance.new("UIGradient", borderFrame)
-uiGradient.Color = ColorSequence.new{
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-	ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
-	ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
-}
-uiGradient.Rotation = 0
-
--- Nền đen bên trong
-local innerFrame = Instance.new("Frame")
-innerFrame.Size = UDim2.new(1, -6, 1, -6)
-innerFrame.Position = UDim2.new(0, 3, 0, 3)
-innerFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-innerFrame.BorderSizePixel = 0
-innerFrame.Parent = borderFrame
-Instance.new("UICorner", innerFrame).CornerRadius = UDim.new(0, 8)
-
--- Nút bấm
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, 0, 1, 0)
-button.Text = "Bật Tàng Hình"
-button.BackgroundTransparency = 1
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Font = Enum.Font.SourceSansBold
-button.TextSize = 18
-button.Parent = innerFrame
-
--- Hiệu ứng đổi màu viền
-task.spawn(function()
-	while task.wait(0.03) do
-		uiGradient.Rotation = (uiGradient.Rotation + 1) % 360
-	end
-end)
-
--- Trạng thái
-local isInvisible = false
-
--- Hàm tàng hình local
-local function setLocalInvisible(state)
-	for _, part in pairs(character:GetDescendants()) do
-		if part:IsA("BasePart") or part:IsA("Decal") then
-			part.Transparency = state and 1 or 0
-		end
-	end
-end
-
--- Sự kiện nút
-button.MouseButton1Click:Connect(function()
-	isInvisible = not isInvisible
-	setLocalInvisible(isInvisible)
-	toggleEvent:FireServer(isInvisible)
-	button.Text = isInvisible and "Tắt Tàng Hình" or "Bật Tàng Hình"
-end)
-
--- Khi respawn
-player.CharacterAdded:Connect(function(newChar)
-	character = newChar
-	if isInvisible then
-		setLocalInvisible(true)
-		toggleEvent:FireServer(true)
-	end
-end)
-
--- Cho phép kéo nút
-local UIS = game:GetService("UserInputService")
-local dragging = false
-local dragStart, startPos
-
-borderFrame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = borderFrame.Position
-	end
-end)
-
-UIS.InputChanged:Connect(function(input)
-	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - dragStart
-		borderFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
-
-UIS.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
-	end
-end)
