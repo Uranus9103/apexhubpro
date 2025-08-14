@@ -1,0 +1,141 @@
+-- ⚠ Script chạy nhanh điều chỉnh tốc độ bằng nút ▲▼
+-- Bản này có hiệu ứng viền đổi màu, tiếng nổ khi chỉnh tốc độ, chạy được qua GitHub
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local speed = 16 -- tốc độ mặc định
+local step = 5   -- mỗi lần tăng/giảm
+local explosionSoundId = 138186576 -- ID tiếng nổ Roblox
+
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.Name = "SpeedGUI"
+screenGui.ResetOnSpawn = false
+
+-- Khung viền ngoài
+local borderFrame = Instance.new("Frame")
+borderFrame.Size = UDim2.new(0, 200, 0, 80)
+borderFrame.Position = UDim2.new(1, -220, 0, 20)
+borderFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+borderFrame.BorderSizePixel = 0
+borderFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner", borderFrame)
+uiCorner.CornerRadius = UDim.new(0, 10)
+
+-- Gradient đổi màu viền
+local uiGradient = Instance.new("UIGradient", borderFrame)
+uiGradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+}
+uiGradient.Rotation = 0
+task.spawn(function()
+	while task.wait(0.03) do
+		uiGradient.Rotation = (uiGradient.Rotation + 1) % 360
+	end
+end)
+
+-- Khung nền trong
+local innerFrame = Instance.new("Frame")
+innerFrame.Size = UDim2.new(1, -6, 1, -6)
+innerFrame.Position = UDim2.new(0, 3, 0, 3)
+innerFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+innerFrame.BorderSizePixel = 0
+innerFrame.Parent = borderFrame
+
+local innerCorner = Instance.new("UICorner", innerFrame)
+innerCorner.CornerRadius = UDim.new(0, 8)
+
+-- Nút tăng
+local upBtn = Instance.new("TextButton")
+upBtn.Size = UDim2.new(0.4, 0, 1, 0)
+upBtn.Position = UDim2.new(0, 0, 0, 0)
+upBtn.Text = "▲"
+upBtn.BackgroundTransparency = 1
+upBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
+upBtn.Font = Enum.Font.SourceSansBold
+upBtn.TextSize = 28
+upBtn.Parent = innerFrame
+
+-- Nút giảm
+local downBtn = Instance.new("TextButton")
+downBtn.Size = UDim2.new(0.4, 0, 1, 0)
+downBtn.Position = UDim2.new(0.6, 0, 0, 0)
+downBtn.Text = "▼"
+downBtn.BackgroundTransparency = 1
+downBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
+downBtn.Font = Enum.Font.SourceSansBold
+downBtn.TextSize = 28
+downBtn.Parent = innerFrame
+
+-- Label tốc độ
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0.2, 0, 1, 0)
+speedLabel.Position = UDim2.new(0.4, 0, 0, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.Font = Enum.Font.SourceSansBold
+speedLabel.TextSize = 20
+speedLabel.Text = tostring(speed)
+speedLabel.Parent = innerFrame
+
+-- Âm thanh nổ
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://"..explosionSoundId
+sound.Parent = player:WaitForChild("PlayerGui")
+
+-- Hàm thay đổi tốc độ
+local function setSpeed(newSpeed)
+	speed = math.max(0, newSpeed)
+	humanoid.WalkSpeed = speed
+	speedLabel.Text = tostring(speed)
+	sound:Play()
+end
+
+-- Sự kiện bấm nút
+upBtn.MouseButton1Click:Connect(function()
+	setSpeed(speed + step)
+end)
+
+downBtn.MouseButton1Click:Connect(function()
+	setSpeed(speed - step)
+end)
+
+-- Giữ tốc độ khi respawn
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	humanoid = character:WaitForChild("Humanoid")
+	humanoid.WalkSpeed = speed
+end)
+
+-- Kéo thả GUI mượt mà
+local UIS = game:GetService("UserInputService")
+local dragging = false
+local dragStart, startPos
+
+borderFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = borderFrame.Position
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		borderFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
