@@ -1,0 +1,59 @@
+-- ⚠ Cảnh báo: Đoạn code này tải script từ bên ngoài.
+-- Chỉ dùng nếu bạn chắc chắn link an toàn.
+loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Tạo GUI nút
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "InvisibleGUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 150, 0, 50)
+button.Position = UDim2.new(1, -160, 1, -60)
+button.AnchorPoint = Vector2.new(0, 0)
+button.Text = "Bật Tàng Hình"
+button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = screenGui
+
+local isInvisible = false
+
+-- Hàm bật/tắt tàng hình
+local function setInvisible(state)
+	isInvisible = state
+	for _, part in pairs(character:GetDescendants()) do
+		if part:IsA("BasePart") or part:IsA("Decal") then
+			if state then
+				part.Transparency = 1
+			else
+				part.Transparency = 0
+			end
+		end
+	end
+end
+
+-- Khi bấm nút
+button.MouseButton1Click:Connect(function()
+	if isInvisible then
+		setInvisible(false)
+		button.Text = "Bật Tàng Hình"
+		button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+	else
+		setInvisible(true)
+		button.Text = "Tắt Tàng Hình"
+		button.BackgroundColor3 = Color3.fromRGB(255, 85, 0)
+	end
+end)
+
+-- Khi nhân vật respawn
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	if isInvisible then
+		setInvisible(true)
+	end
+end)
