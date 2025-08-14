@@ -1,0 +1,79 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local noclip = false
+
+-- ===== GUI =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,160,0,60)
+frame.Position = UDim2.new(1,-180,1,-80)
+frame.BackgroundColor3 = Color3.new(0,0,0)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0,10)
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1,0,1,0)
+button.Text = "Bật Xuyên Tường"
+button.BackgroundTransparency = 0.5
+button.TextColor3 = Color3.new(1,1,1)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = frame
+
+-- Kéo thả mượt
+local dragging=false
+local dragStart, startPos
+local lastPos
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        dragging=true
+        dragStart=input.Position
+        startPos=frame.Position
+        lastPos=startPos
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+        local delta = input.Position-dragStart
+        local target = UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+        frame.Position = lastPos:Lerp(target,0.3)
+        lastPos=frame.Position
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+        dragging=false
+    end
+end)
+
+-- Bật/tắt noclip
+button.MouseButton1Click:Connect(function()
+    noclip = not noclip
+    button.Text = noclip and "Tắt Xuyên Tường" or "Bật Xuyên Tường"
+end)
+
+-- ===== Noclip tự động =====
+RunService.Stepped:Connect(function()
+    if noclip then
+        -- Di chuyển nhân vật thông qua CFrame, bỏ qua va chạm
+        hrp.CFrame = hrp.CFrame
+    end
+end)
+
+-- Giữ trạng thái khi respawn
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    hrp = character:WaitForChild("HumanoidRootPart")
+end)
