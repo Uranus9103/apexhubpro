@@ -3,7 +3,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local HRP = character:WaitForChild("HumanoidRootPart")
 
--- Kích thước ban đầu
+-- Kích thước ban đầu và khi biến to
 local originalScale = 1
 local bigScale = 3
 
@@ -69,7 +69,7 @@ normalButton.Parent = innerFrame
 
 -- Âm thanh bùm
 local boomSound = Instance.new("Sound", HRP)
-boomSound.SoundId = "rbxassetid://138186576" -- Tiếng nổ vui
+boomSound.SoundId = "rbxassetid://138186576"
 boomSound.Volume = 3
 
 -- Hiệu ứng viền quay
@@ -78,6 +78,29 @@ task.spawn(function()
 		uiGradient.Rotation = (uiGradient.Rotation + 1) % 360
 	end
 end)
+
+-- Hàm hiển thị thông báo
+local function showNotification(text)
+	local notif = Instance.new("TextLabel")
+	notif.Size = UDim2.new(0, 300, 0, 50)
+	notif.Position = UDim2.new(0.5, -150, 0.2, 0)
+	notif.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	notif.BackgroundTransparency = 0.3
+	notif.TextColor3 = Color3.fromRGB(255, 255, 255)
+	notif.Font = Enum.Font.SourceSansBold
+	notif.TextSize = 24
+	notif.Text = text
+	notif.Parent = screenGui
+	Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 12)
+
+	-- Tự mờ dần
+	for i = 0, 1, 0.05 do
+		notif.TextTransparency = i
+		notif.BackgroundTransparency = 0.3 + i * 0.7
+		task.wait(0.05)
+	end
+	notif:Destroy()
+end
 
 -- Hàm thay đổi scale mượt
 local function setScale(targetScale)
@@ -100,15 +123,17 @@ end
 -- Sự kiện nút
 bigButton.MouseButton1Click:Connect(function()
 	boomSound:Play()
+	showNotification("💥 Bạn đã biến to gấp 3 lần!")
 	setScale(bigScale)
 end)
 
 normalButton.MouseButton1Click:Connect(function()
 	boomSound:Play()
+	showNotification("✅ Bạn đã trở lại kích thước bình thường!")
 	setScale(originalScale)
 end)
 
--- Kéo thả
+-- Kéo thả nút
 local UIS = game:GetService("UserInputService")
 local dragging, dragStart, startPos
 borderFrame.InputBegan:Connect(function(input)
