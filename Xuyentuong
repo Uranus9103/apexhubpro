@@ -5,10 +5,9 @@ local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-
 local noclip = false
 
--- ===== GUI =====
+-- GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
@@ -16,7 +15,7 @@ screenGui.ResetOnSpawn = false
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0,160,0,60)
 frame.Position = UDim2.new(1,-180,1,-80)
-frame.BackgroundColor3 = Color3.new(0,0,0)
+frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
 
@@ -64,16 +63,19 @@ button.MouseButton1Click:Connect(function()
     button.Text = noclip and "Tắt Xuyên Tường" or "Bật Xuyên Tường"
 end)
 
--- ===== Noclip tự động =====
+-- Noclip liên tục
 RunService.Stepped:Connect(function()
-    if noclip then
-        -- Di chuyển nhân vật thông qua CFrame, bỏ qua va chạm
-        hrp.CFrame = hrp.CFrame
+    if noclip and character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name~="HumanoidRootPart" then
+                part.CanCollide=false
+            end
+        end
     end
 end)
 
 -- Giữ trạng thái khi respawn
 player.CharacterAdded:Connect(function(newChar)
-    character = newChar
+    character=newChar
     hrp = character:WaitForChild("HumanoidRootPart")
 end)
