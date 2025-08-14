@@ -1,0 +1,139 @@
+-- ⚠ Giữ luôn loadstring từ GitHub
+loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- Tạo RemoteEvent nếu chưa có
+local toggleRemote = ReplicatedStorage:FindFirstChild("ToggleInvisible")
+if not toggleRemote then
+    toggleRemote = Instance.new("RemoteEvent")
+    toggleRemote.Name = "ToggleInvisible"
+    toggleRemote.Parent = ReplicatedStorage
+end
+
+-- Nhân vật
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Biến trạng thái
+local isInvisible = false
+
+-- ===== TẠO GUI =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "InvisibleGUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local borderFrame = Instance.new("Frame")
+borderFrame.Size = UDim2.new(0, 160, 0, 60)
+borderFrame.Position = UDim2.new(1, -180, 1, -80)
+borderFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+borderFrame.BorderSizePixel = 0
+borderFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner", borderFrame)
+uiCorner.CornerRadius = UDim.new(0, 10)
+
+local uiGradient = Instance.new("UIGradient", borderFrame)
+uiGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255,0,0)),
+    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0,255,0)),
+    ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0,0,255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255,0,0))
+}
+uiGradient.Rotation = 0
+
+local innerFrame = Instance.new("Frame")
+innerFrame.Size = UDim2.new(1, -6, 1, -6)
+innerFrame.Position = UDim2.new(0, 3, 0, 3)
+innerFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+innerFrame.BorderSizePixel = 0
+innerFrame.Parent = borderFrame
+
+local innerCorner = Instance.new("UICorner", innerFrame)
+innerCorner.CornerRadius = UDim.new(0, 8)
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, 0, 1, 0)
+button.Text = "Bật Tàng Hình"
+button.BackgroundTransparency = 1
+button.TextColor3 = Color3.fromRGB(255,255,255)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = innerFrame
+
+-- Gradient xoay liên tục
+task.spawn(function()
+    while task.wait(0.03) do
+        uiGradient.Rotation = (uiGradient.Rotation + 1) % 360
+    end
+end)
+
+-- ===== HÀM BẬT/TẮT TÀNG HÌNH =====
+local function setInvisible(state)
+    isInvisible = state
+    -- Chỉ client thấy
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("Decal") then
+            if part.Name ~= "HumanoidRootPart" then
+                part.LocalTransparencyModifier = state and 1 or 0
+            end
+        end
+    end
+    -- Gửi server để ẩn với người khác (hitbox vẫn giữ)
+    toggleRemote:FireServer(state)
+end
+
+button.MouseButton1Click:Connect(function()
+    if isInvisible then
+        setInvisible(false)
+        button.Text = "Bật Tàng Hình"
+    else
+        setInvisible(true)
+        button.Text = "Tắt Tàng Hình"
+    end
+end)
+
+-- Giữ trạng thái khi respawn
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    if isInvisible then
+        setInvisible(true)
+    end
+end)
+
+-- ===== KÉO THẢ MƯỢT MÀ =====
+local dragging = false
+local dragStart, startPos
+local lastPos = nil
+
+borderFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = borderFrame.Position
+        lastPos = startPos
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        local targetPos = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+        -- Lerp mượt
+        borderFrame.Position = lastPos:Lerp(targetPos, 0.3)
+        lastPos = borderFrame.Position
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
