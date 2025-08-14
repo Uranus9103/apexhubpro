@@ -1,63 +1,55 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/vinh12eqweaws/vvvs/refs/heads/main/caz"))()
-
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local hrp = character:WaitForChild("HumanoidRootPart")
 
--- ===== GUI =====
+-- Tạo GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,180,0,90)
-frame.Position = UDim2.new(1,-200,1,-120)
-frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
-frame.BorderSizePixel = 0
-frame.Parent = screenGui
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 180, 0, 60)
+button.Position = UDim2.new(1, -200, 1, -120)
+button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Biến Khủng Lồ"
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = screenGui
 
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0,12)
+local giant = false
 
--- Nút biến khủng lồ
-local giantButton = Instance.new("TextButton")
-giantButton.Size = UDim2.new(1,0,1,0)
-giantButton.Text = "Biến Khủng Lồ"
-giantButton.BackgroundTransparency = 0.1
-giantButton.TextColor3 = Color3.fromRGB(255,255,255)
-giantButton.Font = Enum.Font.SourceSansBold
-giantButton.TextSize = 18
-giantButton.Parent = frame
-
--- ===== Hàm biến to nhân vật =====
-local giantActive = false
 local function setGiant(state)
-    giantActive = state
-    local scale = state and 5 or 1 -- 5 lần to hơn bình thường
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Size = part.Size * scale
-        elseif part:IsA("Humanoid") then
-            part.HipHeight = part.HipHeight * scale
-            part.BodyHeightScale.Value = scale
-            part.BodyDepthScale.Value = scale
-            part.BodyWidthScale.Value = scale
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+
+    local height = humanoid:FindFirstChild("BodyHeightScale")
+    local width = humanoid:FindFirstChild("BodyWidthScale")
+    local depth = humanoid:FindFirstChild("BodyDepthScale")
+
+    if height and width and depth then
+        if state then
+            height.Value = 5
+            width.Value = 5
+            depth.Value = 5
+            button.Text = "Thu Nhỏ"
+        else
+            height.Value = 1
+            width.Value = 1
+            depth.Value = 1
+            button.Text = "Biến Khủng Lồ"
         end
     end
-    hrp.Size = hrp.Size * scale
-    giantButton.Text = state and "Thu Nhỏ Nhân Vật" or "Biến Khủng Lồ"
 end
 
-giantButton.MouseButton1Click:Connect(function()
-    setGiant(not giantActive)
+button.MouseButton1Click:Connect(function()
+    giant = not giant
+    setGiant(giant)
 end)
 
--- Giữ trạng thái khi respawn
-player.CharacterAdded:Connect(function(newChar)
-    character = newChar
-    humanoid = character:WaitForChild("Humanoid")
-    hrp = character:WaitForChild("HumanoidRootPart")
-    if giantActive then setGiant(true) end
+-- Khi respawn giữ trạng thái
+player.CharacterAdded:Connect(function()
+    if giant then
+        task.wait(1) -- đợi model load
+        setGiant(true)
+    end
 end)
