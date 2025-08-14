@@ -1,0 +1,102 @@
+-- ⚠ Script này tạo GUI và server event để biến nhân vật khổng lồ
+-- Mọi người trong server sẽ thấy bạn to lên
+
+-- Tạo RemoteEvent nếu chưa có
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local eventName = "ScalePlayerEvent"
+local remote = ReplicatedStorage:FindFirstChild(eventName)
+if not remote then
+    remote = Instance.new("RemoteEvent")
+    remote.Name = eventName
+    remote.Parent = ReplicatedStorage
+end
+
+-- Nếu là server
+if game:GetService("RunService"):IsServer() then
+    remote.OnServerEvent:Connect(function(player, scaleValue)
+        local char = player.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("MeshPart") then
+                    part.Size = part.Size * scaleValue
+                elseif part:IsA("Accessory") and part:FindFirstChild("Handle") then
+                    part.Handle.Size = part.Handle.Size * scaleValue
+                end
+            end
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.BodyDepthScale.Value = humanoid.BodyDepthScale.Value * scaleValue
+                humanoid.BodyHeightScale.Value = humanoid.BodyHeightScale.Value * scaleValue
+                humanoid.BodyWidthScale.Value = humanoid.BodyWidthScale.Value * scaleValue
+                humanoid.HeadScale.Value = humanoid.HeadScale.Value * scaleValue
+            end
+        end
+    end)
+    return -- Server không cần chạy GUI
+end
+
+-- Nếu là client
+local player = game.Players.LocalPlayer
+
+-- Tạo GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ScaleGUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+-- Nút ngoài
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 160, 0, 60)
+frame.Position = UDim2.new(1, -180, 1, -80)
+frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+frame.Active = true
+frame.Draggable = true
+
+local uiCorner = Instance.new("UICorner", frame)
+uiCorner.CornerRadius = UDim.new(0, 10)
+
+-- Gradient viền
+local uiGradient = Instance.new("UIGradient", frame)
+uiGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+    ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+}
+uiGradient.Rotation = 0
+
+-- Hiệu ứng xoay màu
+task.spawn(function()
+    while task.wait(0.03) do
+        uiGradient.Rotation = (uiGradient.Rotation + 1) % 360
+    end
+end)
+
+-- Nút trong
+local inner = Instance.new("Frame")
+inner.Size = UDim2.new(1, -6, 1, -6)
+inner.Position = UDim2.new(0, 3, 0, 3)
+inner.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+inner.BorderSizePixel = 0
+inner.Parent = frame
+
+local innerCorner = Instance.new("UICorner", inner)
+innerCorner.CornerRadius = UDim.new(0, 8)
+
+-- Nút bấm
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, 0, 1, 0)
+button.Text = "Biến To"
+button.BackgroundTransparency = 1
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = inner
+
+-- Sự kiện bấm
+local scaleValue = 2 -- Hệ số to (2 = gấp đôi)
+button.MouseButton1Click:Connect(function()
+    game:GetService("ReplicatedStorage"):WaitForChild(eventName):FireServer(scaleValue)
+end)
