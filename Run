@@ -1,0 +1,226 @@
+-- APEX HUB • Speed Controller (by you)
+-- Tăng/giảm WalkSpeed với tween mượt, GUI pro: tiêu đề RGB + viền sáng, khung gradient quay, kéo thả mượt
+-- Thông báo "Cảm ơn vì đã sử dụng" khi bật • Âm thanh nổ mỗi lần đổi tốc độ
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Cấu hình
+local SPEED_DEFAULT = 16
+local STEP = 5
+local explosionSoundId = 138186576 -- tiếng nổ
+
+-- Trạng thái
+local currentSpeed = SPEED_DEFAULT
+local tweening = false
+
+-- GUI gốc
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "APEX_HUB_SpeedGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- ===== Thông báo “Cảm ơn vì đã sử dụng” =====
+local msg = Instance.new("TextLabel")
+msg.Size = UDim2.new(0.5, 0, 0.12, 0)
+msg.Position = UDim2.new(0.25, 0, 0.44, 0)
+msg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+msg.BackgroundTransparency = 1
+msg.Text = "Cảm ơn vì đã sử dụng"
+msg.TextColor3 = Color3.fromRGB(255, 255, 0)
+msg.Font = Enum.Font.GothamBold
+msg.TextScaled = true
+msg.ZIndex = 50
+msg.Parent = screenGui
+Instance.new("UICorner", msg).CornerRadius = UDim.new(0, 12)
+local msgStroke = Instance.new("UIStroke")
+msgStroke.Parent = msg
+msgStroke.Thickness = 2
+msgStroke.Color = Color3.fromRGB(255, 255, 255)
+task.spawn(function()
+	-- fade in
+	for i=0, 1, 0.06 do
+		msg.BackgroundTransparency = 0.6 - 0.6*i
+		msg.TextTransparency = 1 - i
+		msgStroke.Transparency = 1 - i
+		task.wait(0.02)
+	end
+	task.wait(1.2)
+	-- fade out
+	for i=0, 1, 0.06 do
+		msg.BackgroundTransparency = 0 + 0.6*i
+		msg.TextTransparency = i
+		msgStroke.Transparency = i
+		task.wait(0.02)
+	end
+	msg:Destroy()
+end)
+
+-- ===== Khung chính (góc trên phải, kéo thả mượt) =====
+local border = Instance.new("Frame")
+border.Name = "APEX_Container"
+border.Size = UDim2.new(0, 220, 0, 120)
+border.Position = UDim2.new(1, -240, 0, 20)
+border.BackgroundColor3 = Color3.fromRGB(255,255,255)
+border.BorderSizePixel = 0
+border.Parent = screenGui
+Instance.new("UICorner", border).CornerRadius = UDim.new(0, 12)
+
+-- Viền gradient quay
+local grad = Instance.new("UIGradient", border)
+grad.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 0, 255)),
+	ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0))
+}
+grad.Rotation = 0
+task.spawn(function()
+	while task.wait(0.03) do
+		grad.Rotation = (grad.Rotation + 1) % 360
+	end
+end)
+
+-- Nền trong
+local inner = Instance.new("Frame")
+inner.Size = UDim2.new(1, -8, 1, -8)
+inner.Position = UDim2.new(0, 4, 0, 4)
+inner.BackgroundColor3 = Color3.fromRGB(15,15,15)
+inner.BorderSizePixel = 0
+inner.Parent = border
+Instance.new("UICorner", inner).CornerRadius = UDim.new(0, 10)
+
+-- ===== Tiêu đề “APEX HUB” RGB + viền sáng =====
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -12, 0, 36)
+title.Position = UDim2.new(0, 6, 0, 4)
+title.BackgroundTransparency = 1
+title.Text = "APEX HUB"
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+title.TextColor3 = Color3.fromRGB(255, 255, 0)
+title.Parent = inner
+
+local titleStroke = Instance.new("UIStroke", title)
+titleStroke.Thickness = 2
+titleStroke.Color = Color3.fromRGB(255,255,255)
+
+task.spawn(function()
+	local h=0
+	while task.wait(0.03) do
+		h = (h + 1) % 360
+		local c = Color3.fromHSV(h/360, 1, 1)
+		title.TextColor3 = c
+		titleStroke.Color = c
+	end
+end)
+
+-- ===== Nút & hiển thị tốc độ =====
+local upBtn = Instance.new("TextButton")
+upBtn.Size = UDim2.new(0.42, 0, 0, 44)
+upBtn.Position = UDim2.new(0.05, 0, 0, 56)
+upBtn.BackgroundTransparency = 1
+upBtn.Text = "▲"
+upBtn.TextColor3 = Color3.fromRGB(0,255,0)
+upBtn.Font = Enum.Font.GothamBold
+upBtn.TextScaled = true
+upBtn.Parent = inner
+
+local downBtn = Instance.new("TextButton")
+downBtn.Size = UDim2.new(0.42, 0, 0, 44)
+downBtn.Position = UDim2.new(0.53, 0, 0, 56)
+downBtn.BackgroundTransparency = 1
+downBtn.Text = "▼"
+downBtn.TextColor3 = Color3.fromRGB(255,0,0)
+downBtn.Font = Enum.Font.GothamBold
+downBtn.TextScaled = true
+downBtn.Parent = inner
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(1, -12, 0, 20)
+speedLabel.Position = UDim2.new(0, 6, 0, 40)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Speed: "..tostring(currentSpeed)
+speedLabel.TextColor3 = Color3.fromRGB(230,230,230)
+speedLabel.Font = Enum.Font.GothamSemibold
+speedLabel.TextScaled = true
+speedLabel.Parent = inner
+
+-- Âm thanh nổ
+local boom = Instance.new("Sound")
+boom.SoundId = "rbxassetid://"..tostring(explosionSoundId)
+boom.Volume = 3
+boom.Parent = screenGui
+
+-- ===== Hàm tween tốc độ (mượt) =====
+local function tweenSpeed(target, duration)
+	if humanoid and humanoid.Parent then
+		local start = humanoid.WalkSpeed
+		local t0 = tick()
+		duration = duration or 0.35
+		tweening = true
+		while tweening do
+			local alpha = math.clamp((tick() - t0)/duration, 0, 1)
+			local val = start + (target - start) * alpha
+			humanoid.WalkSpeed = val
+			if alpha >= 1 then
+				break
+			end
+			RunService.RenderStepped:Wait()
+		end
+		currentSpeed = target
+		speedLabel.Text = "Speed: "..math.floor(currentSpeed+0.5)
+	end
+end
+
+local function setSpeed(newSpeed)
+	newSpeed = math.max(0, newSpeed)
+	boom:Play()
+	tweenSpeed(newSpeed, 0.35)
+end
+
+-- Sự kiện nút
+upBtn.MouseButton1Click:Connect(function()
+	setSpeed(currentSpeed + STEP)
+end)
+downBtn.MouseButton1Click:Connect(function()
+	setSpeed(currentSpeed - STEP)
+end)
+
+-- Giữ tốc khi respawn
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	humanoid = character:WaitForChild("Humanoid")
+	-- áp lại tốc hiện tại ngay
+	humanoid.WalkSpeed = currentSpeed
+end)
+
+-- ===== Kéo thả mượt =====
+local dragging, dragStart, startPos = false, nil, nil
+border.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = border.Position
+	end
+end)
+UIS.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		border.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+-- Áp tốc độ mặc định khi khởi động
+humanoid.WalkSpeed = currentSpeed
+speedLabel.Text = "Speed: "..tostring(currentSpeed)
