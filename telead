@@ -125,7 +125,7 @@ local function createPlayerButton(plr, index)
 					plr.Character.HumanoidRootPart.CFrame + Vector3.new(3,0,0)
 
 				-- Chat toàn server
-				sendChatMessage("tp_" .. plr.Name)
+				sendChatMessage("/tp_" .. plr.Name)
 
 				-- Hiệu ứng đổi màu nút khi chọn
 				pbtn.BackgroundColor3 = Color3.fromRGB(50,200,50)
