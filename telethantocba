@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:GetService("TextChatService")
 local player = Players.LocalPlayer
 
 -- GUI chính
@@ -70,15 +71,26 @@ btn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Hàm gửi chat (giả lập mình gõ vào chat)
+-- Hàm gửi chat cho toàn server
 local function sendChatMessage(text)
-	local chatRemote = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest")
-	chatRemote:FireServer(text, "All")
+	-- Chat V2 (TextChatService mới)
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+		if channel then
+			channel:SendAsync(text)
+		end
+	else
+		-- Chat V1 (cũ)
+		local chatRemote = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+		if chatRemote and chatRemote:FindFirstChild("SayMessageRequest") then
+			chatRemote.SayMessageRequest:FireServer(text, "All")
+		end
+	end
 end
 
 -- Hàm tạo nút player
 local function createPlayerButton(plr)
-	if plr == player then return end -- không tạo cho chính mình
+	if plr == player then return end
 	
 	local pbtn = Instance.new("TextButton")
 	pbtn.Size = UDim2.new(1,-10,0,40)
@@ -101,7 +113,7 @@ local function createPlayerButton(plr)
 				player.Character.HumanoidRootPart.CFrame =
 					plr.Character.HumanoidRootPart.CFrame + Vector3.new(3,0,0)
 
-				-- Gửi tin nhắn chat
+				-- Gửi tin nhắn chat (mọi người đều thấy)
 				sendChatMessage("tp_" .. plr.Name)
 			end
 		end
