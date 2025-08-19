@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 -- GUI
@@ -18,25 +19,24 @@ btn.TextColor3 = Color3.fromRGB(255,255,255)
 btn.Font = Enum.Font.GothamBold
 btn.Parent = gui
 
--- Làm nút bo góc
+-- Bo góc
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0,12)
 corner.Parent = btn
 
--- Bóng mờ nút
+-- Viền
 local shadow = Instance.new("UIStroke")
 shadow.Color = Color3.fromRGB(0,0,0)
 shadow.Thickness = 2
 shadow.Transparency = 0.4
 shadow.Parent = btn
 
--- Cho phép kéo nút
+-- Cho kéo nút
 btn.Active = true
 btn.Draggable = true
 
--- Trạng thái bật/tắt
+-- Trạng thái
 local tpEnabled = false
-
 btn.MouseButton1Click:Connect(function()
 	tpEnabled = not tpEnabled
 	if tpEnabled then
@@ -48,7 +48,7 @@ btn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Hàm tìm player (không phân biệt hoa thường, gõ 1 phần cũng được)
+-- Hàm tìm player
 local function findPlayerByName(name)
 	name = string.lower(name)
 	for _,plr in pairs(Players:GetPlayers()) do
@@ -59,10 +59,15 @@ local function findPlayerByName(name)
 	return nil
 end
 
--- Chat command
-player.Chatted:Connect(function(msg)
-	if not tpEnabled then return end
+-- Bắt chat qua ChatEvents (chuẩn hơn player.Chatted)
+local chatEvent = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents")
+	:WaitForChild("OnMessageDoneFiltering")
 
+chatEvent.OnClientEvent:Connect(function(msgData)
+	if not tpEnabled then return end
+	if msgData.FromSpeaker ~= player.Name then return end -- chỉ lệnh mình gõ
+
+	local msg = msgData.Message
 	if string.sub(msg, 1, 4) == "/tp_" then
 		local targetName = string.sub(msg, 5)
 		local targetPlayer = findPlayerByName(targetName)
@@ -78,7 +83,6 @@ player.Chatted:Connect(function(msg)
 				game:GetService("Debris"):AddItem(hint, 2)
 			end
 		else
-			-- Không tìm thấy
 			local hint = Instance.new("Hint", workspace)
 			hint.Text = "❌ Không tìm thấy: " .. targetName
 			game:GetService("Debris"):AddItem(hint, 3)
