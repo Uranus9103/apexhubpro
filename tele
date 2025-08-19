@@ -1,0 +1,124 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- GUI chính
+local gui = Instance.new("ScreenGui")
+gui.Name = "TPGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Nút bật/tắt
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(0,140,0,50)
+btn.Position = UDim2.new(0.05,0,0.05,0)
+btn.Text = "❌ TP OFF"
+btn.TextScaled = true
+btn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+btn.TextColor3 = Color3.fromRGB(255,255,255)
+btn.Font = Enum.Font.GothamBold
+btn.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0,12)
+corner.Parent = btn
+
+local shadow = Instance.new("UIStroke")
+shadow.Color = Color3.fromRGB(0,0,0)
+shadow.Thickness = 2
+shadow.Transparency = 0.4
+shadow.Parent = btn
+
+btn.Active = true
+btn.Draggable = true
+
+-- Frame danh sách player
+local listFrame = Instance.new("Frame")
+listFrame.Size = UDim2.new(0,200,0,250)
+listFrame.Position = UDim2.new(0.05,0,0.15,0)
+listFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+listFrame.BorderSizePixel = 0
+listFrame.Visible = true
+listFrame.Parent = gui
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0,10)
+listCorner.Parent = listFrame
+
+-- Cuộn danh sách
+local scrolling = Instance.new("ScrollingFrame")
+scrolling.Size = UDim2.new(1,0,1,0)
+scrolling.CanvasSize = UDim2.new(0,0,0,0)
+scrolling.BackgroundTransparency = 1
+scrolling.ScrollBarThickness = 6
+scrolling.Parent = listFrame
+
+local layout = Instance.new("UIListLayout")
+layout.Parent = scrolling
+layout.SortOrder = Enum.SortOrder.Name
+
+-- Hàm cập nhật danh sách người chơi
+local function updatePlayerList()
+	scrolling:ClearAllChildren()
+	layout.Parent = scrolling
+	for _,plr in pairs(Players:GetPlayers()) do
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1,-5,0,30)
+		label.BackgroundTransparency = 1
+		label.Text = plr.Name
+		label.TextColor3 = Color3.fromRGB(255,255,255)
+		label.Font = Enum.Font.Gotham
+		label.TextScaled = true
+		label.Parent = scrolling
+	end
+	scrolling.CanvasSize = UDim2.new(0,0,0,#Players:GetPlayers()*0.25)
+end
+
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
+updatePlayerList()
+
+-- Trạng thái TP
+local tpEnabled = false
+
+btn.MouseButton1Click:Connect(function()
+	tpEnabled = not tpEnabled
+	if tpEnabled then
+		btn.Text = "✅ TP ON"
+		btn.BackgroundColor3 = Color3.fromRGB(50,200,50)
+	else
+		btn.Text = "❌ TP OFF"
+		btn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+	end
+end)
+
+-- Tìm player theo tên (không phân biệt hoa thường, cho phép partial)
+local function findPlayerByName(name)
+	name = string.lower(name)
+	for _,plr in pairs(Players:GetPlayers()) do
+		if string.find(string.lower(plr.Name), name, 1, true) then
+			return plr
+		end
+	end
+	return nil
+end
+
+-- Chat command
+player.Chatted:Connect(function(msg)
+	if not tpEnabled then return end
+
+	if string.sub(msg, 1, 4) == "/tp_" then
+		local targetName = string.sub(msg, 5)
+		local targetPlayer = findPlayerByName(targetName)
+
+		if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				player.Character.HumanoidRootPart.CFrame =
+					targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(3,0,0)
+			end
+		else
+			local hint = Instance.new("Hint", workspace)
+			hint.Text = "❌ Không tìm thấy: " .. targetName
+			game:GetService("Debris"):AddItem(hint, 3)
+		end
+	end
+end)
