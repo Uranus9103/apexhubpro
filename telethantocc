@@ -20,25 +20,22 @@ btn.TextColor3 = Color3.fromRGB(255,255,255)
 btn.Font = Enum.Font.GothamBold
 btn.Parent = gui
 
--- Bo góc nút
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0,12)
 corner.Parent = btn
 
--- Viền
 local shadow = Instance.new("UIStroke")
 shadow.Color = Color3.fromRGB(0,0,0)
 shadow.Thickness = 2
 shadow.Transparency = 0.4
 shadow.Parent = btn
 
--- Cho phép kéo
 btn.Active = true
 btn.Draggable = true
 
 -- Frame danh sách
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,200,0,250)
+frame.Size = UDim2.new(0,220,0,300)
 frame.Position = UDim2.new(0.05,0,0.22,0)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Visible = false
@@ -48,11 +45,28 @@ local fcorner = Instance.new("UICorner")
 fcorner.CornerRadius = UDim.new(0,12)
 fcorner.Parent = frame
 
--- Cuộn
+-- Nút tải lại danh sách
+local reloadBtn = Instance.new("TextButton")
+reloadBtn.Size = UDim2.new(1,-20,0,40)
+reloadBtn.Position = UDim2.new(0,10,0,10)
+reloadBtn.Text = "🔄 Tải lại"
+reloadBtn.TextScaled = true
+reloadBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+reloadBtn.TextColor3 = Color3.fromRGB(255,255,255)
+reloadBtn.Font = Enum.Font.GothamBold
+reloadBtn.Parent = frame
+
+local rc = Instance.new("UICorner")
+rc.CornerRadius = UDim.new(0,8)
+rc.Parent = reloadBtn
+
+-- ScrollingFrame danh sách
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1,0,1,0)
+scroll.Size = UDim2.new(1,-20,1,-60)
+scroll.Position = UDim2.new(0,10,0,55)
 scroll.CanvasSize = UDim2.new(0,0,0,0)
 scroll.ScrollBarThickness = 6
+scroll.ScrollBarImageColor3 = Color3.fromRGB(150,150,150)
 scroll.BackgroundTransparency = 1
 scroll.Parent = frame
 
@@ -71,16 +85,14 @@ btn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Hàm gửi chat cho toàn server
+-- Gửi chat toàn server
 local function sendChatMessage(text)
-	-- Chat V2 (TextChatService mới)
 	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
 		local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
 		if channel then
 			channel:SendAsync(text)
 		end
 	else
-		-- Chat V1 (cũ)
 		local chatRemote = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
 		if chatRemote and chatRemote:FindFirstChild("SayMessageRequest") then
 			chatRemote.SayMessageRequest:FireServer(text, "All")
@@ -88,13 +100,13 @@ local function sendChatMessage(text)
 	end
 end
 
--- Hàm tạo nút player
-local function createPlayerButton(plr)
+-- Tạo nút người chơi
+local function createPlayerButton(plr, index)
 	if plr == player then return end
 	
 	local pbtn = Instance.new("TextButton")
-	pbtn.Size = UDim2.new(1,-10,0,40)
-	pbtn.Position = UDim2.new(0,5,0, (#scroll:GetChildren()-1)*45 )
+	pbtn.Size = UDim2.new(1, -10, 0, 40)
+	pbtn.Position = UDim2.new(0, 5, 0, (index-1)*45 )
 	pbtn.Text = plr.Name
 	pbtn.TextScaled = true
 	pbtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
@@ -106,33 +118,50 @@ local function createPlayerButton(plr)
 	pc.CornerRadius = UDim.new(0,8)
 	pc.Parent = pbtn
 
-	-- Khi bấm thì TP
 	pbtn.MouseButton1Click:Connect(function()
 		if tpEnabled and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 				player.Character.HumanoidRootPart.CFrame =
 					plr.Character.HumanoidRootPart.CFrame + Vector3.new(3,0,0)
 
-				-- Gửi tin nhắn chat (mọi người đều thấy)
+				-- Chat toàn server
 				sendChatMessage("tp_" .. plr.Name)
+
+				-- Hiệu ứng đổi màu nút khi chọn
+				pbtn.BackgroundColor3 = Color3.fromRGB(50,200,50)
+				task.delay(1, function()
+					if pbtn then
+						pbtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+					end
+				end)
 			end
 		end
 	end)
 end
 
--- Hàm update danh sách
+-- Update danh sách
 local function updateList()
 	for _,child in pairs(scroll:GetChildren()) do
 		if child:IsA("TextButton") then
 			child:Destroy()
 		end
 	end
+
+	local index = 1
 	for _,plr in pairs(Players:GetPlayers()) do
-		createPlayerButton(plr)
+		if plr ~= player then
+			createPlayerButton(plr, index)
+			index += 1
+		end
 	end
-	scroll.CanvasSize = UDim2.new(0,0,0,(#Players:GetPlayers()-1)*45)
+
+	scroll.CanvasSize = UDim2.new(0,0,0,(index-1)*45)
 end
 
+-- Bấm nút tải lại thì refresh danh sách
+reloadBtn.MouseButton1Click:Connect(updateList)
+
+-- Tự cập nhật khi có người vào/ra
 Players.PlayerAdded:Connect(updateList)
 Players.PlayerRemoving:Connect(updateList)
 updateList()
