@@ -1,0 +1,190 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:GetService("TextChatService")
+local player = Players.LocalPlayer
+
+-- GUI chính
+local gui = Instance.new("ScreenGui")
+gui.Name = "MainGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Nút mở menu
+local mainBtn = Instance.new("TextButton")
+mainBtn.Size = UDim2.new(0,140,0,50)
+mainBtn.Position = UDim2.new(0.05,0,0.1,0)
+mainBtn.Text = "📜 MENU"
+mainBtn.TextScaled = true
+mainBtn.BackgroundColor3 = Color3.fromRGB(50,120,200)
+mainBtn.TextColor3 = Color3.fromRGB(255,255,255)
+mainBtn.Font = Enum.Font.GothamBold
+mainBtn.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0,12)
+corner.Parent = mainBtn
+mainBtn.Active, mainBtn.Draggable = true, true
+
+-- Frame menu
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,260,0,330)
+frame.Position = UDim2.new(0.05,0,0.25,0)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.Visible = false
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
+
+-- Tab buttons
+local tpTab = Instance.new("TextButton")
+tpTab.Size = UDim2.new(0.5,-5,0,40)
+tpTab.Position = UDim2.new(0,5,0,5)
+tpTab.Text = "📌 TP"
+tpTab.TextScaled = true
+tpTab.BackgroundColor3 = Color3.fromRGB(70,70,70)
+tpTab.TextColor3 = Color3.fromRGB(255,255,255)
+tpTab.Font = Enum.Font.GothamBold
+tpTab.Parent = frame
+Instance.new("UICorner", tpTab).CornerRadius = UDim.new(0,8)
+
+local banTab = tpTab:Clone()
+banTab.Text = "🚫 BAN"
+banTab.Position = UDim2.new(0.5,0,0,5)
+banTab.Parent = frame
+
+-- Hai frame danh sách
+local tpFrame = Instance.new("Frame")
+tpFrame.Size = UDim2.new(1,-10,1,-50)
+tpFrame.Position = UDim2.new(0,5,0,45)
+tpFrame.BackgroundTransparency = 1
+tpFrame.Parent = frame
+
+local banFrame = tpFrame:Clone()
+banFrame.Parent = frame
+banFrame.Visible = false
+
+-- Nút tải lại
+local reloadBtn = Instance.new("TextButton")
+reloadBtn.Size = UDim2.new(1,-20,0,35)
+reloadBtn.Position = UDim2.new(0,10,0,0)
+reloadBtn.Text = "🔄 Tải lại"
+reloadBtn.TextScaled = true
+reloadBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+reloadBtn.TextColor3 = Color3.fromRGB(255,255,255)
+reloadBtn.Font = Enum.Font.GothamBold
+reloadBtn.Parent = tpFrame
+Instance.new("UICorner", reloadBtn).CornerRadius = UDim.new(0,8)
+
+local reloadBtn2 = reloadBtn:Clone()
+reloadBtn2.Parent = banFrame
+
+-- ScrollingFrame
+local tpScroll = Instance.new("ScrollingFrame")
+tpScroll.Size = UDim2.new(1,-20,1,-45)
+tpScroll.Position = UDim2.new(0,10,0,40)
+tpScroll.CanvasSize = UDim2.new(0,0,0,0)
+tpScroll.ScrollBarThickness = 6
+tpScroll.BackgroundTransparency = 1
+tpScroll.Parent = tpFrame
+
+local banScroll = tpScroll:Clone()
+banScroll.Parent = banFrame
+
+-- Trạng thái
+local banList = {}
+
+-- Chat function
+local function sendChatMessage(text)
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+		if channel then channel:SendAsync(text) end
+	else
+		local chatRemote = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+		if chatRemote and chatRemote:FindFirstChild("SayMessageRequest") then
+			chatRemote.SayMessageRequest:FireServer(text,"All")
+		end
+	end
+end
+
+-- Tạo nút trong danh sách
+local function createPlayerButton(plr, index, mode)
+	local pbtn = Instance.new("TextButton")
+	pbtn.Size = UDim2.new(1,-10,0,40)
+	pbtn.Position = UDim2.new(0,5,0,(index-1)*45)
+	pbtn.Text = plr.Name
+	pbtn.TextScaled = true
+	pbtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+	pbtn.TextColor3 = Color3.fromRGB(255,255,255)
+	pbtn.Font = Enum.Font.GothamBold
+	Instance.new("UICorner", pbtn).CornerRadius = UDim.new(0,8)
+
+	if mode == "tp" then
+		pbtn.Parent = tpScroll
+		pbtn.MouseButton1Click:Connect(function()
+			if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+				if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+					player.Character.HumanoidRootPart.CFrame =
+						plr.Character.HumanoidRootPart.CFrame + Vector3.new(3,0,0)
+					sendChatMessage("/tp_"..plr.Name)
+				end
+			end
+		end)
+	else -- ban mode
+		pbtn.Parent = banScroll
+		if banList[plr.Name] then
+			pbtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+			pbtn.Text = "Unban "..plr.Name
+		end
+		pbtn.MouseButton1Click:Connect(function()
+			if banList[plr.Name] then
+				banList[plr.Name] = nil
+				pbtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+				pbtn.Text = plr.Name
+				sendChatMessage("/unban_"..plr.Name)
+			else
+				banList[plr.Name] = true
+				pbtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+				pbtn.Text = "Unban "..plr.Name
+				sendChatMessage("/ban_"..plr.Name)
+			end
+		end)
+	end
+end
+
+-- Update danh sách
+local function updateList()
+	for _,child in pairs(tpScroll:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+	for _,child in pairs(banScroll:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+
+	local i1,i2 = 1,1
+	for _,plr in pairs(Players:GetPlayers()) do
+		if plr ~= player then
+			createPlayerButton(plr,i1,"tp") i1+=1
+			createPlayerButton(plr,i2,"ban") i2+=1
+		end
+	end
+	tpScroll.CanvasSize = UDim2.new(0,0,0,(i1-1)*45)
+	banScroll.CanvasSize = UDim2.new(0,0,0,(i2-1)*45)
+end
+
+reloadBtn.MouseButton1Click:Connect(updateList)
+reloadBtn2.MouseButton1Click:Connect(updateList)
+Players.PlayerAdded:Connect(updateList)
+Players.PlayerRemoving:Connect(updateList)
+updateList()
+
+-- Tab switching
+tpTab.MouseButton1Click:Connect(function()
+	tpFrame.Visible,banFrame.Visible=true,false
+	tpTab.BackgroundColor3=Color3.fromRGB(100,100,100)
+	banTab.BackgroundColor3=Color3.fromRGB(70,70,70)
+end)
+banTab.MouseButton1Click:Connect(function()
+	tpFrame.Visible,banFrame.Visible=false,true
+	banTab.BackgroundColor3=Color3.fromRGB(100,100,100)
+	tpTab.BackgroundColor3=Color3.fromRGB(70,70,70)
+end)
+
+-- Bật/tắt menu
+mainBtn.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+end)
