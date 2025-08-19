@@ -1,0 +1,167 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:GetService("TextChatService")
+local player = Players.LocalPlayer
+
+-- GUI chính
+local gui = Instance.new("ScreenGui")
+gui.Name = "TPGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Nút bật/tắt TP
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(0,140,0,50)
+btn.Position = UDim2.new(0.05,0,0.1,0)
+btn.Text = "❌ TP OFF"
+btn.TextScaled = true
+btn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+btn.TextColor3 = Color3.fromRGB(255,255,255)
+btn.Font = Enum.Font.GothamBold
+btn.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0,12)
+corner.Parent = btn
+
+local shadow = Instance.new("UIStroke")
+shadow.Color = Color3.fromRGB(0,0,0)
+shadow.Thickness = 2
+shadow.Transparency = 0.4
+shadow.Parent = btn
+
+btn.Active = true
+btn.Draggable = true  -- ✅ Kéo được
+
+-- Frame danh sách
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,220,0,300)
+frame.Position = UDim2.new(0.05,0,0.22,0)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Visible = false
+frame.Parent = gui
+frame.Active = true
+frame.Draggable = true  -- ✅ Kéo được
+
+local fcorner = Instance.new("UICorner")
+fcorner.CornerRadius = UDim.new(0,12)
+fcorner.Parent = frame
+
+-- Nút tải lại danh sách
+local reloadBtn = Instance.new("TextButton")
+reloadBtn.Size = UDim2.new(1,-20,0,40)
+reloadBtn.Position = UDim2.new(0,10,0,10)
+reloadBtn.Text = "🔄 Tải lại"
+reloadBtn.TextScaled = true
+reloadBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+reloadBtn.TextColor3 = Color3.fromRGB(255,255,255)
+reloadBtn.Font = Enum.Font.GothamBold
+reloadBtn.Parent = frame
+
+local rc = Instance.new("UICorner")
+rc.CornerRadius = UDim.new(0,8)
+rc.Parent = reloadBtn
+
+-- ScrollingFrame danh sách
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1,-20,1,-60)
+scroll.Position = UDim2.new(0,10,0,55)
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+scroll.ScrollBarThickness = 6
+scroll.ScrollBarImageColor3 = Color3.fromRGB(150,150,150)
+scroll.BackgroundTransparency = 1
+scroll.Parent = frame
+
+-- Trạng thái TP
+local tpEnabled = false
+btn.MouseButton1Click:Connect(function()
+	tpEnabled = not tpEnabled
+	if tpEnabled then
+		btn.Text = "✅ TP ON"
+		btn.BackgroundColor3 = Color3.fromRGB(50,200,50)
+		frame.Visible = true
+	else
+		btn.Text = "❌ TP OFF"
+		btn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+		frame.Visible = false
+	end
+end)
+
+-- Gửi chat toàn server
+local function sendChatMessage(text)
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+		if channel then
+			channel:SendAsync(text)
+		end
+	else
+		local chatRemote = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+		if chatRemote and chatRemote:FindFirstChild("SayMessageRequest") then
+			chatRemote.SayMessageRequest:FireServer(text, "All")
+		end
+	end
+end
+
+-- Tạo nút người chơi
+local function createPlayerButton(plr, index)
+	if plr == player then return end
+	
+	local pbtn = Instance.new("TextButton")
+	pbtn.Size = UDim2.new(1, -10, 0, 40)
+	pbtn.Position = UDim2.new(0, 5, 0, (index-1)*45 )
+	pbtn.Text = "🚀 " .. plr.Name
+	pbtn.TextScaled = true
+	pbtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+	pbtn.TextColor3 = Color3.fromRGB(255,255,255)
+	pbtn.Font = Enum.Font.GothamBold
+	pbtn.Parent = scroll
+
+	local pc = Instance.new("UICorner")
+	pc.CornerRadius = UDim.new(0,8)
+	pc.Parent = pbtn
+
+	pbtn.MouseButton1Click:Connect(function()
+		if tpEnabled and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				-- Teleport sang bên cạnh player kia
+				player.Character.HumanoidRootPart.CFrame =
+					plr.Character.HumanoidRootPart.CFrame + Vector3.new(3,0,0)
+
+				-- Chat toàn server
+				sendChatMessage("/tp_" .. plr.Name)
+
+				-- Hiệu ứng nút khi chọn
+				pbtn.BackgroundColor3 = Color3.fromRGB(50,200,50)
+				task.delay(1, function()
+					if pbtn then
+						pbtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+					end
+				end)
+			end
+		end
+	end)
+end
+
+-- Update danh sách
+local function updateList()
+	for _,child in pairs(scroll:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+
+	local index = 1
+	for _,plr in pairs(Players:GetPlayers()) do
+		if plr ~= player then
+			createPlayerButton(plr, index)
+			index += 1
+		end
+	end
+
+	scroll.CanvasSize = UDim2.new(0,0,0,(index-1)*45)
+end
+
+reloadBtn.MouseButton1Click:Connect(updateList)
+Players.PlayerAdded:Connect(updateList)
+Players.PlayerRemoving:Connect(updateList)
+updateList()
