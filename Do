@@ -1,0 +1,122 @@
+-- Freeze All - OneScript (Client + Server)
+-- Đặt script này trong StarterGui (LocalScript)
+-- Nó sẽ tự tạo RemoteEvent và xử lý server logic
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+-- ====== RemoteEvent + trạng thái ======
+local freezeEvent = ReplicatedStorage:FindFirstChild("FreezeAll")
+if not freezeEvent then
+    freezeEvent = Instance.new("RemoteEvent")
+    freezeEvent.Name = "FreezeAll"
+    freezeEvent.Parent = ReplicatedStorage
+end
+
+local stateVal = ReplicatedStorage:FindFirstChild("GlobalFreeze")
+if not stateVal then
+    stateVal = Instance.new("BoolValue")
+    stateVal.Name = "GlobalFreeze"
+    stateVal.Value = false
+    stateVal.Parent = ReplicatedStorage
+end
+
+-- ====== SERVER CODE (chạy khi OnServerEvent kích hoạt) ======
+if RunService:IsServer() then
+    local function applyFreeze(character, frozen)
+        if not character then return end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        if not humanoid or not hrp then return end
+
+        if frozen then
+            humanoid.WalkSpeed = 0
+            if humanoid.UseJumpPower ~= nil then
+                humanoid.UseJumpPower = true
+                humanoid.JumpPower = 0
+            else
+                humanoid.JumpHeight = 0
+            end
+            humanoid.AutoRotate = false
+            hrp.Ananchored = true
+        else
+            humanoid.WalkSpeed = 16
+            if humanoid.UseJumpPower ~= nil then
+                humanoid.UseJumpPower = true
+                humanoid.JumpPower = 50
+            else
+                humanoid.JumpHeight = 7.2
+            end
+            humanoid.AutoRotate = true
+            hrp.Anchored = false
+        end
+    end
+
+    local function applyFreezeToAll(frozen)
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr.Character then
+                applyFreeze(plr.Character, frozen)
+            end
+        end
+    end
+
+    freezeEvent.OnServerEvent:Connect(function(plr)
+        local newState = not stateVal.Value
+        stateVal.Value = newState
+        applyFreezeToAll(newState)
+    end)
+
+    Players.PlayerAdded:Connect(function(plr)
+        plr.CharacterAdded:Connect(function(char)
+            if stateVal.Value then
+                task.defer(applyFreeze, char, true)
+            end
+        end)
+    end)
+end
+
+-- ====== CLIENT CODE (nút GUI) ======
+if RunService:IsClient() then
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "FreezeGui"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
+
+    local btn = Instance.new("TextButton")
+    btn.Name = "FreezeButton"
+    btn.Size = UDim2.new(0, 180, 0, 50)
+    btn.Position = UDim2.new(0.7, 0, 0.8, 0)
+    btn.Text = "Đóng băng: TẮT"
+    btn.TextScaled = true
+    btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Parent = gui
+    btn.Active = true
+    btn.Draggable = true
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = btn
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Parent = btn
+
+    local function refreshText()
+        if stateVal.Value then
+            btn.Text = "Đóng băng: BẬT"
+            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        else
+            btn.Text = "Đóng băng: TẮT"
+            btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        end
+    end
+    refreshText()
+    stateVal:GetPropertyChangedSignal("Value"):Connect(refreshText)
+
+    btn.MouseButton1Click:Connect(function()
+        freezeEvent:FireServer()
+    end)
+end
