@@ -1,11 +1,9 @@
--- Freeze All - OneScript (Client + Server)
--- Đặt script này trong StarterGui (LocalScript)
--- Nó sẽ tự tạo RemoteEvent và xử lý server logic
+-- Freeze All - One Script
+-- Đặt trong StarterPlayer > StarterPlayerScripts (Script thường)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
 
 -- ====== RemoteEvent + trạng thái ======
 local freezeEvent = ReplicatedStorage:FindFirstChild("FreezeAll")
@@ -23,62 +21,51 @@ if not stateVal then
     stateVal.Parent = ReplicatedStorage
 end
 
--- ====== SERVER CODE (chạy khi OnServerEvent kích hoạt) ======
-if RunService:IsServer() then
-    local function applyFreeze(character, frozen)
-        if not character then return end
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not hrp then return end
+-- ====== SERVER CODE ======
+local function applyFreeze(character, frozen)
+    if not character then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not hrp then return end
 
-        if frozen then
-            humanoid.WalkSpeed = 0
-            if humanoid.UseJumpPower ~= nil then
-                humanoid.UseJumpPower = true
-                humanoid.JumpPower = 0
-            else
-                humanoid.JumpHeight = 0
-            end
-            humanoid.AutoRotate = false
-            hrp.Ananchored = true
-        else
-            humanoid.WalkSpeed = 16
-            if humanoid.UseJumpPower ~= nil then
-                humanoid.UseJumpPower = true
-                humanoid.JumpPower = 50
-            else
-                humanoid.JumpHeight = 7.2
-            end
-            humanoid.AutoRotate = true
-            hrp.Anchored = false
-        end
+    if frozen then
+        humanoid.WalkSpeed = 0
+        humanoid.JumpPower = 0
+        humanoid.AutoRotate = false
+        hrp.Anchored = true
+    else
+        humanoid.WalkSpeed = 16
+        humanoid.JumpPower = 50
+        humanoid.AutoRotate = true
+        hrp.Anchored = false
     end
-
-    local function applyFreezeToAll(frozen)
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr.Character then
-                applyFreeze(plr.Character, frozen)
-            end
-        end
-    end
-
-    freezeEvent.OnServerEvent:Connect(function(plr)
-        local newState = not stateVal.Value
-        stateVal.Value = newState
-        applyFreezeToAll(newState)
-    end)
-
-    Players.PlayerAdded:Connect(function(plr)
-        plr.CharacterAdded:Connect(function(char)
-            if stateVal.Value then
-                task.defer(applyFreeze, char, true)
-            end
-        end)
-    end)
 end
 
--- ====== CLIENT CODE (nút GUI) ======
+local function applyFreezeToAll(frozen)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            applyFreeze(plr.Character, frozen)
+        end
+    end
+end
+
+freezeEvent.OnServerEvent:Connect(function(plr)
+    local newState = not stateVal.Value
+    stateVal.Value = newState
+    applyFreezeToAll(newState)
+end)
+
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function(char)
+        if stateVal.Value then
+            task.defer(applyFreeze, char, true)
+        end
+    end)
+end)
+
+-- ====== CLIENT CODE ======
 if RunService:IsClient() then
+    local player = Players.LocalPlayer
     local gui = Instance.new("ScreenGui")
     gui.Name = "FreezeGui"
     gui.ResetOnSpawn = false
