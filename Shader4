@@ -1,0 +1,226 @@
+-- ControlPanel.client.lua
+-- Đặt trong StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
+local player = Players.LocalPlayer
+
+-- Biến trạng thái
+local shaderOn = false
+local fixLagOn = false
+local notifiedFixLag = false
+
+--------------------------------------------------------
+-- SHADER
+--------------------------------------------------------
+local function enableShader()
+    for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Sky","APS_Atmos"}) do
+        local old=Lighting:FindFirstChild(v)
+        if old then old:Destroy() end
+    end
+
+    local bloom=Instance.new("BloomEffect",Lighting)
+    bloom.Name="APS_Bloom"
+    bloom.Intensity=1.5
+    bloom.Threshold=0.4
+    bloom.Size=35
+
+    local color=Instance.new("ColorCorrectionEffect",Lighting)
+    color.Name="APS_Color"
+    color.Saturation=0.15
+    color.Contrast=0.1
+    color.TintColor=Color3.fromRGB(255,244,230)
+
+    local sun=Instance.new("SunRaysEffect",Lighting)
+    sun.Name="APS_SunRays"
+    sun.Intensity=0.2
+    sun.Spread=0.3
+
+    local dof=Instance.new("DepthOfFieldEffect",Lighting)
+    dof.Name="APS_DOF"
+    dof.FocusDistance=40
+    dof.InFocusRadius=12
+    dof.NearIntensity=0.2
+    dof.FarIntensity=0.5
+
+    local blur=Instance.new("BlurEffect",Lighting)
+    blur.Name="APS_Blur"
+    blur.Size=1
+
+    local atmo=Instance.new("Atmosphere",Lighting)
+    atmo.Name="APS_Atmos"
+    atmo.Density=0.35
+    atmo.Offset=0.25
+    atmo.Color=Color3.fromRGB(200,220,255)
+    atmo.Decay=Color3.fromRGB(120,150,200)
+    atmo.Glare=0.3
+    atmo.Haze=1
+
+    local sky=Instance.new("Sky",Lighting)
+    sky.Name="APS_Sky"
+    sky.SkyboxBk="rbxassetid://7018684000"
+    sky.SkyboxDn="rbxassetid://7018684000"
+    sky.SkyboxFt="rbxassetid://7018684000"
+    sky.SkyboxLf="rbxassetid://7018684000"
+    sky.SkyboxRt="rbxassetid://7018684000"
+    sky.SkyboxUp="rbxassetid://7018684000"
+    sky.SunTextureId="rbxassetid://6196665102"
+    sky.MoonTextureId="rbxassetid://6444320592"
+    sky.StarCount=3000
+end
+
+local function disableShader()
+    for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Sky","APS_Atmos"}) do
+        local old=Lighting:FindFirstChild(v)
+        if old then old:Destroy() end
+    end
+end
+
+--------------------------------------------------------
+-- FIX LAG
+--------------------------------------------------------
+local originalStates = {baseparts={},particleEmitters={},trails={},decals={}}
+local function applyLowQuality()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            if not originalStates.baseparts[part] then
+                originalStates.baseparts[part]={CastShadow=part.CastShadow}
+            end
+            part.CastShadow=false
+        end
+        if part:IsA("ParticleEmitter") then
+            if not originalStates.particleEmitters[part] then
+                originalStates.particleEmitters[part]={Enabled=part.Enabled}
+            end
+            part.Enabled=false
+        end
+        if part:IsA("Trail") then
+            if not originalStates.trails[part] then
+                originalStates.trails[part]={Enabled=part.Enabled}
+            end
+            part.Enabled=false
+        end
+        if part:IsA("Decal") then
+            if not originalStates.decals[part] then
+                originalStates.decals[part]={Transparency=part.Transparency}
+            end
+            part.Transparency=math.clamp(part.Transparency+0.2,0,1)
+        end
+    end
+    Lighting.GlobalShadows=false
+    Lighting.Brightness=0.5
+end
+
+local function restoreQuality()
+    for p,s in pairs(originalStates.baseparts) do if p and p.Parent then p.CastShadow=s.CastShadow end end
+    for e,s in pairs(originalStates.particleEmitters) do if e and e.Parent then e.Enabled=s.Enabled end end
+    for t,s in pairs(originalStates.trails) do if t and t.Parent then t.Enabled=s.Enabled end end
+    for d,s in pairs(originalStates.decals) do if d and d.Parent then d.Transparency=s.Transparency end end
+    originalStates.baseparts,originalStates.particleEmitters,originalStates.trails,originalStates.decals={},{},{},{}
+    Lighting.GlobalShadows=true
+    Lighting.Brightness=2
+end
+
+--------------------------------------------------------
+-- GUI
+--------------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "ControlPanel"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Nút ẩn/hiện bảng
+local toggleBtn = Instance.new("TextButton", gui)
+toggleBtn.Size = UDim2.new(0, 80, 0, 30)
+toggleBtn.Position = UDim2.new(0, 20, 0, 100)
+toggleBtn.Text = "Menu"
+toggleBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+toggleBtn.TextColor3 = Color3.new(1,1,1)
+
+-- Bảng chính
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 160, 0, 100)
+frame.Position = UDim2.new(0, 120, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+frame.Visible = true
+
+-- Nút Shader
+local shaderBtn = Instance.new("TextButton", frame)
+shaderBtn.Size = UDim2.new(0,140,0,30)
+shaderBtn.Position = UDim2.new(0,10,0,10)
+shaderBtn.Text = "Shader: OFF"
+shaderBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+shaderBtn.TextColor3 = Color3.new(1,1,1)
+
+shaderBtn.MouseButton1Click:Connect(function()
+    shaderOn = not shaderOn
+    if shaderOn then
+        enableShader()
+        shaderBtn.Text = "Shader: ON"
+    else
+        disableShader()
+        shaderBtn.Text = "Shader: OFF"
+    end
+end)
+
+-- Nút Fix Lag
+local lagBtn = Instance.new("TextButton", frame)
+lagBtn.Size = UDim2.new(0,140,0,30)
+lagBtn.Position = UDim2.new(0,10,0,50)
+lagBtn.Text = "Fix Lag: OFF"
+lagBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+lagBtn.TextColor3 = Color3.new(1,1,1)
+
+lagBtn.MouseButton1Click:Connect(function()
+    fixLagOn = not fixLagOn
+    if fixLagOn then
+        applyLowQuality()
+        lagBtn.Text = "Fix Lag: ON"
+        if not notifiedFixLag then
+            StarterGui:SetCore("SendNotification",{Title="Fix Lag",Text="Đã bật chế độ giảm lag!",Duration=3})
+            notifiedFixLag = true
+        end
+    else
+        restoreQuality()
+        lagBtn.Text = "Fix Lag: OFF"
+    end
+end)
+
+-- Ẩn/hiện bảng
+toggleBtn.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
+end)
+
+-- Kéo thả cho frame và toggleBtn
+local UserInputService = game:GetService("UserInputService")
+
+local function makeDraggable(guiObj)
+    local dragging, dragInput, dragStart, startPos
+    guiObj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiObj.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    guiObj.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            guiObj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+makeDraggable(frame)
+makeDraggable(toggleBtn)
