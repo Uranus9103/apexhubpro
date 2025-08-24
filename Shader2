@@ -1,15 +1,16 @@
--- AutoPerfShader.client.lua
--- Shader + Sky đẹp hơn + Auto tối ưu
+-- AutoPerfShaderSunset.client.lua
+-- Shader hoàng hôn + Nhạc thiên nhiên
 -- Đặt trong StarterPlayer > StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
 local player = Players.LocalPlayer
 
 --------------------------------------------------------
--- PERF UTILS MODULE (gộp vào luôn)
+-- PERF UTILS
 --------------------------------------------------------
 local PerfUtils = {}
 local originalStates = {baseparts={},particleEmitters={},trails={},decals={}}
@@ -68,97 +69,107 @@ function PerfUtils.restoreQuality()
 end
 
 --------------------------------------------------------
--- SHADER & SKY
+-- SHADER HOÀNG HÔN + NHẠC
 --------------------------------------------------------
-local function setupEffects()
-    -- xoá cũ nếu có
-    for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Sky","APS_Atmos"}) do
+local function setupSunsetEffects()
+    -- clear old
+    for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Atmos","APS_Sky"}) do
         local old=Lighting:FindFirstChild(v)
         if old then old:Destroy() end
     end
 
-    -- Bloom (ánh sáng chói rực)
+    -- Bloom
     local bloom=Instance.new("BloomEffect",Lighting)
     bloom.Name="APS_Bloom"
-    bloom.Intensity=1.5
+    bloom.Intensity=1.2
     bloom.Threshold=0.4
-    bloom.Size=35
+    bloom.Size=30
 
-    -- ColorCorrection (màu phim)
+    -- ColorCorrection (cam ấm)
     local color=Instance.new("ColorCorrectionEffect",Lighting)
     color.Name="APS_Color"
-    color.Saturation=0.15
-    color.Contrast=0.1
-    color.TintColor=Color3.fromRGB(255,244,230)
+    color.Saturation=0.2
+    color.Contrast=0.15
+    color.TintColor=Color3.fromRGB(255,180,120) -- cam
 
-    -- SunRays (tia sáng mặt trời)
+    -- SunRays
     local sun=Instance.new("SunRaysEffect",Lighting)
     sun.Name="APS_SunRays"
-    sun.Intensity=0.2
-    sun.Spread=0.3
+    sun.Intensity=0.25
+    sun.Spread=0.4
 
-    -- Depth of Field (làm mờ xa gần)
+    -- Depth of Field
     local dof=Instance.new("DepthOfFieldEffect",Lighting)
     dof.Name="APS_DOF"
-    dof.FocusDistance=40
-    dof.InFocusRadius=12
+    dof.FocusDistance=35
+    dof.InFocusRadius=10
     dof.NearIntensity=0.2
-    dof.FarIntensity=0.5
+    dof.FarIntensity=0.4
 
-    -- Blur (nhẹ để cinematic)
-    local blur=Instance.new("BlurEffect",Lighting)
-    blur.Name="APS_Blur"
-    blur.Size=1
-
-    -- Atmosphere (bầu trời xanh + haze)
+    -- Atmosphere (màu trời hoàng hôn)
     local atmo=Instance.new("Atmosphere",Lighting)
     atmo.Name="APS_Atmos"
     atmo.Density=0.35
     atmo.Offset=0.25
-    atmo.Color=Color3.fromRGB(200,220,255)
-    atmo.Decay=Color3.fromRGB(120,150,200)
-    atmo.Glare=0.3
+    atmo.Color=Color3.fromRGB(255,180,130)
+    atmo.Decay=Color3.fromRGB(200,100,50)
+    atmo.Glare=0.4
     atmo.Haze=1
 
-    -- Sky (bầu trời đẹp)
+    -- Sky (màu hoàng hôn cam)
     local sky=Instance.new("Sky",Lighting)
     sky.Name="APS_Sky"
-    sky.SkyboxBk="rbxassetid://7018684000"
-    sky.SkyboxDn="rbxassetid://7018684000"
-    sky.SkyboxFt="rbxassetid://7018684000"
-    sky.SkyboxLf="rbxassetid://7018684000"
-    sky.SkyboxRt="rbxassetid://7018684000"
-    sky.SkyboxUp="rbxassetid://7018684000"
+    sky.SkyboxBk="rbxassetid://151294881"
+    sky.SkyboxDn="rbxassetid://151294881"
+    sky.SkyboxFt="rbxassetid://151294881"
+    sky.SkyboxLf="rbxassetid://151294881"
+    sky.SkyboxRt="rbxassetid://151294881"
+    sky.SkyboxUp="rbxassetid://151294881"
     sky.SunTextureId="rbxassetid://6196665102"
     sky.MoonTextureId="rbxassetid://6444320592"
-    sky.StarCount=3000
+    sky.StarCount=1500
+end
+
+-- Nhạc thiên nhiên
+local function playNatureMusic()
+    if SoundService:FindFirstChild("APS_NatureMusic") then
+        SoundService.APS_NatureMusic:Play()
+        return
+    end
+    local sound=Instance.new("Sound",SoundService)
+    sound.Name="APS_NatureMusic"
+    sound.SoundId="rbxassetid://1849758357" -- tiếng suối/thiên nhiên
+    sound.Looped=true
+    sound.Volume=0.5
+    sound:Play()
+end
+local function stopNatureMusic()
+    local s=SoundService:FindFirstChild("APS_NatureMusic")
+    if s then s:Stop() end
 end
 
 --------------------------------------------------------
 -- AUTO PERF
 --------------------------------------------------------
-local TARGET_FPS=60
-local LOW_FPS_THRESHOLD=30
-local MEDIUM_FPS_THRESHOLD=45
-local CHECK_INTERVAL=4
+local TARGET_FPS,LOW_FPS_THRESHOLD,MEDIUM_FPS_THRESHOLD,CHECK_INTERVAL=60,30,45,4
 local smoothedFPS=TARGET_FPS
 local lastCheck=0
 local updating=true
 
-local function setHighQuality() setupEffects() PerfUtils.restoreQuality() end
+local function setHighQuality() setupSunsetEffects() PerfUtils.restoreQuality() playNatureMusic() end
 local function setMediumQuality()
-    setupEffects()
-    if Lighting:FindFirstChild("APS_Bloom") then Lighting.APS_Bloom.Intensity=0.8 end
+    setupSunsetEffects()
+    if Lighting:FindFirstChild("APS_Bloom") then Lighting.APS_Bloom.Intensity=0.7 end
     if Lighting:FindFirstChild("APS_SunRays") then Lighting.APS_SunRays.Intensity=0.1 end
     if Lighting:FindFirstChild("APS_DOF") then Lighting.APS_DOF.Enabled=false end
-    PerfUtils.restoreQuality()
+    PerfUtils.restoreQuality() playNatureMusic()
 end
 local function setLowQuality()
+    stopNatureMusic()
     if Lighting:FindFirstChild("APS_Bloom") then Lighting.APS_Bloom.Enabled=false end
     if Lighting:FindFirstChild("APS_Color") then Lighting.APS_Color.Enabled=false end
     if Lighting:FindFirstChild("APS_SunRays") then Lighting.APS_SunRays.Enabled=false end
     if Lighting:FindFirstChild("APS_DOF") then Lighting.APS_DOF.Enabled=false end
-    if Lighting:FindFirstChild("APS_Blur") then Lighting.APS_Blur.Enabled=false end
     PerfUtils.applyLowQuality()
 end
 
@@ -180,8 +191,8 @@ local function createToggleGui()
     gui.Name="AutoPerf_GUI"
     gui.ResetOnSpawn=false
     local btn=Instance.new("TextButton",gui)
-    btn.Size=UDim2.new(0,120,0,36)
-    btn.Position=UDim2.new(1,-130,0,12)
+    btn.Size=UDim2.new(0,140,0,36)
+    btn.Position=UDim2.new(1,-150,0,12)
     btn.Text="AutoPerf: ON"
     btn.BackgroundTransparency=0.35
     btn.Font=Enum.Font.SourceSansBold
@@ -190,10 +201,10 @@ local function createToggleGui()
     btn.MouseButton1Click:Connect(function()
         state=not state
         if state then
-            btn.Text="AutoPerf: ON"; updating=true
+            btn.Text="AutoPerf: ON"; updating=true; setHighQuality()
         else
             btn.Text="AutoPerf: OFF"; updating=false
-            PerfUtils.restoreQuality(); setHighQuality()
+            PerfUtils.restoreQuality(); stopNatureMusic()
         end
     end)
 end
