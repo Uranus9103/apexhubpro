@@ -1,12 +1,11 @@
--- AutoPerfShaderToggle.client.lua
--- Shader + Sky + Auto tối ưu (chỉ bật khi ấn nút)
+-- Shader + Fix Lag Toggle Script
 -- Đặt trong StarterPlayer > StarterPlayerScripts
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
-local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
+local player = Players.LocalPlayer
 
 --------------------------------------------------------
 -- PERF UTILS
@@ -87,7 +86,7 @@ local function setupEffects()
 
 	local color=Instance.new("ColorCorrectionEffect",Lighting)
 	color.Name="APS_Color"
-	color.Saturation=0.15
+	color.Saturation=0.2
 	color.Contrast=0.1
 	color.TintColor=Color3.fromRGB(255,244,230)
 
@@ -129,84 +128,93 @@ local function setupEffects()
 	sky.StarCount=3000
 end
 
---------------------------------------------------------
--- AUTO PERF
---------------------------------------------------------
-local TARGET_FPS=60
-local LOW_FPS_THRESHOLD=30
-local MEDIUM_FPS_THRESHOLD=45
-local CHECK_INTERVAL=4
-local smoothedFPS=TARGET_FPS
-local lastCheck=0
-
-local function setHighQuality() setupEffects() PerfUtils.restoreQuality() end
-local function setMediumQuality()
-	setupEffects()
-	if Lighting:FindFirstChild("APS_Bloom") then Lighting.APS_Bloom.Intensity=0.8 end
-	if Lighting:FindFirstChild("APS_SunRays") then Lighting.APS_SunRays.Intensity=0.1 end
-	if Lighting:FindFirstChild("APS_DOF") then Lighting.APS_DOF.Enabled=false end
-	PerfUtils.restoreQuality()
-end
-local function setLowQuality()
-	if Lighting:FindFirstChild("APS_Bloom") then Lighting.APS_Bloom.Enabled=false end
-	if Lighting:FindFirstChild("APS_Color") then Lighting.APS_Color.Enabled=false end
-	if Lighting:FindFirstChild("APS_SunRays") then Lighting.APS_SunRays.Enabled=false end
-	if Lighting:FindFirstChild("APS_DOF") then Lighting.APS_DOF.Enabled=false end
-	if Lighting:FindFirstChild("APS_Blur") then Lighting.APS_Blur.Enabled=false end
-	PerfUtils.applyLowQuality()
-end
-
-local function updateFPS(dt)
-	local fps=1/math.max(dt,0.0001)
-	smoothedFPS=smoothedFPS*0.9+fps*0.1
-	lastCheck=lastCheck+dt
-	if lastCheck>=CHECK_INTERVAL then
-		lastCheck=0
-		if smoothedFPS<LOW_FPS_THRESHOLD then setLowQuality()
-		elseif smoothedFPS<MEDIUM_FPS_THRESHOLD then setMediumQuality()
-		else setHighQuality() end
-		StarterGui:SetCore("SendNotification",{Title="AutoPerf",Text="FPS: "..math.floor(smoothedFPS+0.5),Duration=2})
+local function removeEffects()
+	for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Sky","APS_Atmos"}) do
+		local old=Lighting:FindFirstChild(v)
+		if old then old:Destroy() end
 	end
 end
 
 --------------------------------------------------------
--- GUI TOGGLE
+-- DRAGGABLE BUTTON FUNCTION
 --------------------------------------------------------
-local enabled=false
-local conn=nil
-
-local function createToggleGui()
-	local gui=Instance.new("ScreenGui",player:WaitForChild("PlayerGui"))
-	gui.Name="AutoPerf_GUI"
-	gui.ResetOnSpawn=false
-	local btn=Instance.new("TextButton",gui)
-	btn.Size=UDim2.new(0,150,0,40)
-	btn.Position=UDim2.new(1,-160,0,12)
-	btn.Text="AutoPerf: OFF"
-	btn.BackgroundTransparency=0.35
-	btn.Font=Enum.Font.SourceSansBold
-	btn.TextSize=16
-	btn.TextColor3=Color3.new(1,1,1)
-
-	btn.MouseButton1Click:Connect(function()
-		enabled=not enabled
-		if enabled then
-			btn.Text="AutoPerf: ON"
-			setHighQuality()
-			conn=RunService.RenderStepped:Connect(updateFPS)
-		else
-			btn.Text="AutoPerf: OFF"
-			if conn then conn:Disconnect() conn=nil end
-			PerfUtils.restoreQuality()
-			for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Sky","APS_Atmos"}) do
-				local old=Lighting:FindFirstChild(v)
-				if old then old:Destroy() end
-			end
+local function makeDraggable(btn)
+	local dragging, dragInput, dragStart, startPos
+	btn.InputBegan:Connect(function(input)
+		if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+			dragging=true
+			dragStart=input.Position
+			startPos=btn.Position
+			input.Changed:Connect(function()
+				if input.UserInputState==Enum.UserInputState.End then dragging=false end
+			end)
+		end
+	end)
+	btn.InputChanged:Connect(function(input)
+		if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then
+			dragInput=input
+		end
+	end)
+	game:GetService("UserInputService").InputChanged:Connect(function(input)
+		if input==dragInput and dragging then
+			local delta=input.Position-dragStart
+			btn.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
 		end
 	end)
 end
 
 --------------------------------------------------------
--- INIT
+-- CREATE GUI
 --------------------------------------------------------
-createToggleGui()
+local gui=Instance.new("ScreenGui",player:WaitForChild("PlayerGui"))
+gui.Name="PerfShaderGUI"
+gui.ResetOnSpawn=false
+
+-- Shader Button
+local shaderBtn=Instance.new("TextButton",gui)
+shaderBtn.Size=UDim2.new(0,120,0,36)
+shaderBtn.Position=UDim2.new(0,20,0,100)
+shaderBtn.Text="Shader: OFF"
+shaderBtn.BackgroundTransparency=0.35
+shaderBtn.Font=Enum.Font.SourceSansBold
+shaderBtn.TextSize=14
+
+-- Fix Lag Button
+local lagBtn=Instance.new("TextButton",gui)
+lagBtn.Size=UDim2.new(0,120,0,36)
+lagBtn.Position=UDim2.new(0,20,0,150)
+lagBtn.Text="Fix Lag: OFF"
+lagBtn.BackgroundTransparency=0.35
+lagBtn.Font=Enum.Font.SourceSansBold
+lagBtn.TextSize=14
+
+makeDraggable(shaderBtn)
+makeDraggable(lagBtn)
+
+--------------------------------------------------------
+-- BUTTON LOGIC
+--------------------------------------------------------
+local shaderOn=false
+shaderBtn.MouseButton1Click:Connect(function()
+	shaderOn=not shaderOn
+	if shaderOn then
+		setupEffects()
+		shaderBtn.Text="Shader: ON"
+	else
+		removeEffects()
+		shaderBtn.Text="Shader: OFF"
+	end
+end)
+
+local lagOn=false
+lagBtn.MouseButton1Click:Connect(function()
+	lagOn=not lagOn
+	if lagOn then
+		PerfUtils.applyLowQuality()
+		lagBtn.Text="Fix Lag: ON"
+		StarterGui:SetCore("SendNotification",{Title="Fix Lag",Text="Đã bật tối ưu hiệu suất",Duration=3})
+	else
+		PerfUtils.restoreQuality()
+		lagBtn.Text="Fix Lag: OFF"
+	end
+end)
