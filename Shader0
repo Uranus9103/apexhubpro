@@ -1,0 +1,212 @@
+-- AutoPerfShaderToggle.client.lua
+-- Shader + Sky + Auto tối ưu (chỉ bật khi ấn nút)
+-- Đặt trong StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local player = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+
+--------------------------------------------------------
+-- PERF UTILS
+--------------------------------------------------------
+local PerfUtils = {}
+local originalStates = {baseparts={},particleEmitters={},trails={},decals={}}
+
+local function isSafeToModify(obj)
+	if not obj then return false end
+	if obj:IsDescendantOf(game.Players) then return false end
+	return true
+end
+
+function PerfUtils.applyLowQuality()
+	for _, part in ipairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") and isSafeToModify(part) then
+			if not originalStates.baseparts[part] then
+				originalStates.baseparts[part]={CastShadow=part.CastShadow}
+			end
+			part.CastShadow=false
+		end
+		if part:IsA("ParticleEmitter") and isSafeToModify(part) then
+			if not originalStates.particleEmitters[part] then
+				originalStates.particleEmitters[part]={Enabled=part.Enabled}
+			end
+			part.Enabled=false
+		end
+		if part:IsA("Trail") and isSafeToModify(part) then
+			if not originalStates.trails[part] then
+				originalStates.trails[part]={Enabled=part.Enabled}
+			end
+			part.Enabled=false
+		end
+		if part:IsA("Decal") and isSafeToModify(part) then
+			if not originalStates.decals[part] then
+				originalStates.decals[part]={Transparency=part.Transparency}
+			end
+			part.Transparency=math.clamp(part.Transparency+0.2,0,1)
+		end
+	end
+	if not originalStates._lighting then
+		originalStates._lighting={
+			GlobalShadows=Lighting.GlobalShadows,
+			Brightness=Lighting.Brightness
+		}
+	end
+	Lighting.GlobalShadows=false
+	Lighting.Brightness=0.5
+end
+
+function PerfUtils.restoreQuality()
+	for p,s in pairs(originalStates.baseparts) do if p and p.Parent then p.CastShadow=s.CastShadow end end
+	for e,s in pairs(originalStates.particleEmitters) do if e and e.Parent then e.Enabled=s.Enabled end end
+	for t,s in pairs(originalStates.trails) do if t and t.Parent then t.Enabled=s.Enabled end end
+	for d,s in pairs(originalStates.decals) do if d and d.Parent then d.Transparency=s.Transparency end end
+	if originalStates._lighting then
+		Lighting.GlobalShadows=originalStates._lighting.GlobalShadows
+		Lighting.Brightness=originalStates._lighting.Brightness
+		originalStates._lighting=nil
+	end
+	originalStates.baseparts,originalStates.particleEmitters,originalStates.trails,originalStates.decals={},{},{},{}
+end
+
+--------------------------------------------------------
+-- SHADER & SKY
+--------------------------------------------------------
+local function setupEffects()
+	for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Sky","APS_Atmos"}) do
+		local old=Lighting:FindFirstChild(v)
+		if old then old:Destroy() end
+	end
+
+	local bloom=Instance.new("BloomEffect",Lighting)
+	bloom.Name="APS_Bloom"
+	bloom.Intensity=1.5
+	bloom.Threshold=0.4
+	bloom.Size=35
+
+	local color=Instance.new("ColorCorrectionEffect",Lighting)
+	color.Name="APS_Color"
+	color.Saturation=0.15
+	color.Contrast=0.1
+	color.TintColor=Color3.fromRGB(255,244,230)
+
+	local sun=Instance.new("SunRaysEffect",Lighting)
+	sun.Name="APS_SunRays"
+	sun.Intensity=0.2
+	sun.Spread=0.3
+
+	local dof=Instance.new("DepthOfFieldEffect",Lighting)
+	dof.Name="APS_DOF"
+	dof.FocusDistance=40
+	dof.InFocusRadius=12
+	dof.NearIntensity=0.2
+	dof.FarIntensity=0.5
+
+	local blur=Instance.new("BlurEffect",Lighting)
+	blur.Name="APS_Blur"
+	blur.Size=1
+
+	local atmo=Instance.new("Atmosphere",Lighting)
+	atmo.Name="APS_Atmos"
+	atmo.Density=0.35
+	atmo.Offset=0.25
+	atmo.Color=Color3.fromRGB(200,220,255)
+	atmo.Decay=Color3.fromRGB(120,150,200)
+	atmo.Glare=0.3
+	atmo.Haze=1
+
+	local sky=Instance.new("Sky",Lighting)
+	sky.Name="APS_Sky"
+	sky.SkyboxBk="rbxassetid://7018684000"
+	sky.SkyboxDn="rbxassetid://7018684000"
+	sky.SkyboxFt="rbxassetid://7018684000"
+	sky.SkyboxLf="rbxassetid://7018684000"
+	sky.SkyboxRt="rbxassetid://7018684000"
+	sky.SkyboxUp="rbxassetid://7018684000"
+	sky.SunTextureId="rbxassetid://6196665102"
+	sky.MoonTextureId="rbxassetid://6444320592"
+	sky.StarCount=3000
+end
+
+--------------------------------------------------------
+-- AUTO PERF
+--------------------------------------------------------
+local TARGET_FPS=60
+local LOW_FPS_THRESHOLD=30
+local MEDIUM_FPS_THRESHOLD=45
+local CHECK_INTERVAL=4
+local smoothedFPS=TARGET_FPS
+local lastCheck=0
+
+local function setHighQuality() setupEffects() PerfUtils.restoreQuality() end
+local function setMediumQuality()
+	setupEffects()
+	if Lighting:FindFirstChild("APS_Bloom") then Lighting.APS_Bloom.Intensity=0.8 end
+	if Lighting:FindFirstChild("APS_SunRays") then Lighting.APS_SunRays.Intensity=0.1 end
+	if Lighting:FindFirstChild("APS_DOF") then Lighting.APS_DOF.Enabled=false end
+	PerfUtils.restoreQuality()
+end
+local function setLowQuality()
+	if Lighting:FindFirstChild("APS_Bloom") then Lighting.APS_Bloom.Enabled=false end
+	if Lighting:FindFirstChild("APS_Color") then Lighting.APS_Color.Enabled=false end
+	if Lighting:FindFirstChild("APS_SunRays") then Lighting.APS_SunRays.Enabled=false end
+	if Lighting:FindFirstChild("APS_DOF") then Lighting.APS_DOF.Enabled=false end
+	if Lighting:FindFirstChild("APS_Blur") then Lighting.APS_Blur.Enabled=false end
+	PerfUtils.applyLowQuality()
+end
+
+local function updateFPS(dt)
+	local fps=1/math.max(dt,0.0001)
+	smoothedFPS=smoothedFPS*0.9+fps*0.1
+	lastCheck=lastCheck+dt
+	if lastCheck>=CHECK_INTERVAL then
+		lastCheck=0
+		if smoothedFPS<LOW_FPS_THRESHOLD then setLowQuality()
+		elseif smoothedFPS<MEDIUM_FPS_THRESHOLD then setMediumQuality()
+		else setHighQuality() end
+		StarterGui:SetCore("SendNotification",{Title="AutoPerf",Text="FPS: "..math.floor(smoothedFPS+0.5),Duration=2})
+	end
+end
+
+--------------------------------------------------------
+-- GUI TOGGLE
+--------------------------------------------------------
+local enabled=false
+local conn=nil
+
+local function createToggleGui()
+	local gui=Instance.new("ScreenGui",player:WaitForChild("PlayerGui"))
+	gui.Name="AutoPerf_GUI"
+	gui.ResetOnSpawn=false
+	local btn=Instance.new("TextButton",gui)
+	btn.Size=UDim2.new(0,150,0,40)
+	btn.Position=UDim2.new(1,-160,0,12)
+	btn.Text="AutoPerf: OFF"
+	btn.BackgroundTransparency=0.35
+	btn.Font=Enum.Font.SourceSansBold
+	btn.TextSize=16
+	btn.TextColor3=Color3.new(1,1,1)
+
+	btn.MouseButton1Click:Connect(function()
+		enabled=not enabled
+		if enabled then
+			btn.Text="AutoPerf: ON"
+			setHighQuality()
+			conn=RunService.RenderStepped:Connect(updateFPS)
+		else
+			btn.Text="AutoPerf: OFF"
+			if conn then conn:Disconnect() conn=nil end
+			PerfUtils.restoreQuality()
+			for _,v in ipairs({"APS_Bloom","APS_Color","APS_SunRays","APS_DOF","APS_Blur","APS_Sky","APS_Atmos"}) do
+				local old=Lighting:FindFirstChild(v)
+				if old then old:Destroy() end
+			end
+		end
+	end)
+end
+
+--------------------------------------------------------
+-- INIT
+--------------------------------------------------------
+createToggleGui()
