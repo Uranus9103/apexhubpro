@@ -1,0 +1,88 @@
+-- PlayerESP.client.lua
+-- Đặt trong StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Tạo folder ESP
+local espFolder = Instance.new("Folder")
+espFolder.Name = "ESP_Objects"
+espFolder.Parent = CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+
+-- Hàm vẽ ESP cho 1 player
+local function createESP(targetPlayer)
+	if targetPlayer == LocalPlayer then return end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ESP_Highlight"
+	highlight.Adornee = nil
+	highlight.FillTransparency = 1
+	highlight.OutlineColor = Color3.fromRGB(0,255,0)
+	highlight.OutlineTransparency = 0
+	highlight.Parent = espFolder
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ESP_Billboard"
+	billboard.Size = UDim2.new(0,200,0,50)
+	billboard.AlwaysOnTop = true
+	billboard.StudsOffset = Vector3.new(0,3,0)
+	billboard.Parent = espFolder
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1,0,1,0)
+	label.BackgroundTransparency = 1
+	label.TextStrokeTransparency = 0
+	label.TextColor3 = Color3.fromRGB(0,255,0)
+	label.Font = Enum.Font.SourceSansBold
+	label.TextSize = 14
+	label.Parent = billboard
+
+	local function update()
+		local char = targetPlayer.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			highlight.Adornee = char
+			billboard.Adornee = char:FindFirstChild("HumanoidRootPart")
+
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+				label.Text = string.format("%s | %.0f studs", targetPlayer.Name, distance)
+
+				-- Đổi màu theo khoảng cách
+				if distance < 50 then
+					label.TextColor3 = Color3.fromRGB(0,255,0) -- gần
+					highlight.OutlineColor = Color3.fromRGB(0,255,0)
+				else
+					label.TextColor3 = Color3.fromRGB(255,0,0) -- xa
+					highlight.OutlineColor = Color3.fromRGB(255,0,0)
+				end
+			end
+		else
+			highlight.Adornee = nil
+			billboard.Adornee = nil
+		end
+	end
+
+	-- Update liên tục
+	RunService.RenderStepped:Connect(update)
+end
+
+-- Xoá ESP khi người chơi rời
+local function removeESP(targetPlayer)
+	for _, obj in ipairs(espFolder:GetChildren()) do
+		if obj:IsA("Highlight") or obj:IsA("BillboardGui") then
+			if obj.Adornee and obj.Adornee.Parent == targetPlayer.Character then
+				obj:Destroy()
+			end
+		end
+	end
+end
+
+-- Theo dõi tất cả player
+for _, p in ipairs(Players:GetPlayers()) do
+	createESP(p)
+end
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
