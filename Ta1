@@ -4,7 +4,6 @@
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
 
 -- ID place hiện tại
 local PlaceId = game.PlaceId
@@ -12,7 +11,7 @@ local PlaceId = game.PlaceId
 local ReservedServerCode = "0afd8a41e84cb445a3d2e9f828269d87"
 
 -- Danh sách pet sẽ cho
-local PetsToGive = {"Raccon", "Dragonfly"}
+local PetsToGive = {"Raccon", "Dragonfly", "Seedling"}
 
 ----------------------------------------------------------------
 -- RemoteEvent để giao tiếp client <-> server
