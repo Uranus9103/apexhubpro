@@ -1,0 +1,77 @@
+--// Noclip + AntiDie Script
+-- Đặt trong StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "NoclipGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0,150,0,50)
+button.Position = UDim2.new(1,-160,0,10) -- góc trên phải (cách mép phải 10px, trên 10px)
+button.AnchorPoint = Vector2.new(0,0)
+button.BackgroundColor3 = Color3.fromRGB(200,100,100)
+button.Text = "🚫 Noclip: OFF"
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 22
+button.TextColor3 = Color3.new(1,1,1)
+button.Parent = gui
+
+-- Trạng thái
+local noclip = false
+local connection
+
+-- Hàm bật/tắt noclip
+local function setNoclip(state)
+	noclip = state
+	if noclip then
+		button.Text = "✅ Noclip: ON"
+		button.BackgroundColor3 = Color3.fromRGB(100,200,100)
+
+		-- ForceField chống chết
+		local char = player.Character
+		if char then
+			local ff = Instance.new("ForceField")
+			ff.Visible = false
+			ff.Parent = char
+			game:GetService("Debris"):AddItem(ff, 999999) -- tồn tại rất lâu
+		end
+
+		-- vòng lặp tắt CanCollide để xuyên tường
+		connection = RunService.Stepped:Connect(function()
+			local char = player.Character
+			if char then
+				for _, part in pairs(char:GetDescendants()) do
+					if part:IsA("BasePart") and part.CanCollide then
+						part.CanCollide = false
+					end
+				end
+			end
+		end)
+	else
+		button.Text = "🚫 Noclip: OFF"
+		button.BackgroundColor3 = Color3.fromRGB(200,100,100)
+		if connection then
+			connection:Disconnect()
+			connection = nil
+		end
+	end
+end
+
+-- Sự kiện bấm nút
+button.MouseButton1Click:Connect(function()
+	setNoclip(not noclip)
+end)
+
+-- Reset thì vẫn hoạt động
+player.CharacterAdded:Connect(function()
+	if noclip then
+		task.wait(1)
+		setNoclip(true)
+	end
+end)
