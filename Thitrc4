@@ -1,0 +1,81 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Tạo GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "BaseESP"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Đặt tên folder chứa Base trong workspace
+local baseFolder = workspace:WaitForChild("Bases") -- 👈 chỗ này bạn đổi đúng tên folder base trong game
+
+-- Lưu ESP labels
+local espLabels = {}
+
+-- Hàm tạo label ESP
+local function createESP(base)
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0,200,0,20)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255,50,50)
+	label.TextStrokeTransparency = 0.3
+	label.Font = Enum.Font.SourceSansBold
+	label.TextScaled = true
+	label.Text = "[BASE] " .. base.Name
+	label.Parent = gui
+	espLabels[base] = label
+end
+
+-- Hàm xóa ESP
+local function removeESP(base)
+	if espLabels[base] then
+		espLabels[base]:Destroy()
+		espLabels[base] = nil
+	end
+end
+
+-- Tạo ESP cho các base hiện có
+for _,base in pairs(baseFolder:GetChildren()) do
+	if base:IsA("Model") or base:IsA("Part") then
+		createESP(base)
+	end
+end
+
+-- Nếu có base mới spawn
+baseFolder.ChildAdded:Connect(function(base)
+	if base:IsA("Model") or base:IsA("Part") then
+		createESP(base)
+	end
+end)
+
+-- Nếu base bị xoá
+baseFolder.ChildRemoved:Connect(function(base)
+	removeESP(base)
+end)
+
+-- Cập nhật vị trí ESP liên tục
+RunService.RenderStepped:Connect(function()
+	for base,label in pairs(espLabels) do
+		local pos
+		if base:IsA("Model") and base:FindFirstChild("PrimaryPart") then
+			pos = base.PrimaryPart.Position
+		elseif base:IsA("Part") then
+			pos = base.Position
+		end
+
+		if pos then
+			local vector, onScreen = camera:WorldToViewportPoint(pos)
+			if onScreen then
+				label.Position = UDim2.new(0, vector.X - 100, 0, vector.Y - 10)
+				label.Visible = true
+				label.Text = string.format("[BASE] %s (%.0f)", base.Name, (player.Character and player.Character:FindFirstChild("HumanoidRootPart") and (player.Character.HumanoidRootPart.Position - pos).Magnitude) or 0)
+			else
+				label.Visible = false
+			end
+		end
+	end
+end)
