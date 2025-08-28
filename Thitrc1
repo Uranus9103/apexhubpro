@@ -1,0 +1,91 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local targetPosition = Vector3.new(-147, 26, 259) -- toạ độ bay đến
+local flying = false
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "FlyToGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 180, 0, 40)
+button.Position = UDim2.new(1, -200, 1, -60) -- góc dưới bên phải
+button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Bay đến toạ độ"
+button.Parent = gui
+
+-- Hàm chống chết
+local function antiDie(char)
+	local humanoid = char:WaitForChild("Humanoid")
+	humanoid.Health = humanoid.MaxHealth
+	humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+		if humanoid.Health <= 0 then
+			humanoid.Health = humanoid.MaxHealth -- hồi sinh ngay
+		end
+	end)
+end
+
+-- Gọi antiDie khi respawn
+player.CharacterAdded:Connect(function(char)
+	antiDie(char)
+end)
+if player.Character then
+	antiDie(player.Character)
+end
+
+-- Anti giật về chỗ cũ
+local lastPos = nil
+RunService.Heartbeat:Connect(function()
+	if flying and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		local root = player.Character.HumanoidRootPart
+		if lastPos and (root.Position - lastPos).Magnitude > 100 then
+			root.CFrame = CFrame.new(lastPos) -- quay lại chỗ cũ nếu bị kéo giật
+		end
+		lastPos = root.Position
+	end
+end)
+
+-- Bay tới tọa độ
+local function flyToTarget()
+	if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+	local root = player.Character.HumanoidRootPart
+	flying = true
+	lastPos = root.Position
+
+	while flying and task.wait(0.1) do
+		if not root.Parent then break end
+		-- Di chuyển mượt tới target
+		local newPos = root.Position:Lerp(targetPosition, 0.1)
+		root.CFrame = CFrame.new(newPos, targetPosition)
+
+		-- Né vật cản: nâng nhân vật cao lên nếu bị kẹt
+		local ray = Ray.new(root.Position, root.CFrame.LookVector * 5)
+		local part = workspace:FindPartOnRay(ray, player.Character)
+		if part then
+			root.CFrame = root.CFrame + Vector3.new(0, 5, 0)
+		end
+
+		-- Nếu đã đến gần target thì dừng
+		if (root.Position - targetPosition).Magnitude < 5 then
+			flying = false
+			button.Text = "Bay đến toạ độ"
+			break
+		end
+	end
+end
+
+-- Nút bấm
+button.MouseButton1Click:Connect(function()
+	if flying then
+		flying = false
+		button.Text = "Bay đến toạ độ"
+	else
+		button.Text = "Đang bay..."
+		flyToTarget()
+	end
+end)
