@@ -1,0 +1,96 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "HomeGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 160, 0, 40)
+button.Position = UDim2.new(1, -180, 1, -60) -- góc dưới bên phải
+button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Đặt Nhà"
+button.Parent = gui
+
+-- Biến nhớ tọa độ
+local homePosition = nil
+local homeSaved = false
+
+-- Hàm kiểm tra có bị kẹt không (chạm part)
+local function isBlocked(pos, character)
+	local rayOrigin = pos
+	local rayDirection = Vector3.new(0, -5, 0)
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {character}
+	raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+	local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+	return result and result.Instance ~= nil
+end
+
+-- Hàm đưa về nhà, có né vật thể
+local function teleportHome()
+	if player.Character and homePosition then
+		local root = player.Character:FindFirstChild("HumanoidRootPart")
+		if root then
+			local targetPos = homePosition + Vector3.new(0, 3, 0) -- tránh kẹt đất
+			local safePos = targetPos
+
+			-- Nếu chỗ đó bị chặn, nâng dần lên cao để né
+			for i = 1, 20 do
+				if not isBlocked(safePos, player.Character) then
+					break
+				end
+				safePos = safePos + Vector3.new(0, 5, 0)
+			end
+
+			root.CFrame = CFrame.new(safePos)
+		end
+	end
+end
+
+-- Anti die: khi respawn thì đưa về nhà
+local function setupAntiDie(char)
+	char:WaitForChild("Humanoid").Died:Connect(function()
+		char:WaitForChild("HumanoidRootPart").CFrame = CFrame.new(homePosition or Vector3.new(0,10,0))
+	end)
+end
+
+player.CharacterAdded:Connect(function(char)
+	if homeSaved then
+		setupAntiDie(char)
+		task.wait(1)
+		teleportHome()
+	end
+end)
+
+-- Anti giật về chỗ cũ
+RunService.Heartbeat:Connect(function()
+	if homeSaved and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		local root = player.Character.HumanoidRootPart
+		if (root.Position - homePosition).Magnitude > 100 then
+			teleportHome()
+		end
+	end
+end)
+
+-- Nút bấm
+button.MouseButton1Click:Connect(function()
+	local char = player.Character or player.CharacterAdded:Wait()
+	local root = char:WaitForChild("HumanoidRootPart")
+
+	if not homeSaved then
+		-- Lần đầu: lưu vị trí
+		homePosition = root.Position
+		homeSaved = true
+		button.Text = "Về Nhà"
+		setupAntiDie(char)
+	else
+		-- Lần sau: đưa về nhà
+		teleportHome()
+	end
+end)
