@@ -1,0 +1,113 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "HomeGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 160, 0, 40)
+button.Position = UDim2.new(1, -180, 1, -60) -- góc dưới bên phải
+button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Đặt Nhà"
+button.Parent = gui
+
+-- Biến nhớ
+local homePosition = nil
+local homeSaved = false
+local flyingHome = false
+
+-- Hàm né vật (nếu bị chắn phía trước thì nâng cao)
+local function avoidObstacle(root)
+	local rayOrigin = root.Position
+	local rayDirection = root.CFrame.LookVector * 5
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {player.Character}
+	raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+	local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+	if result and result.Instance then
+		root.CFrame = root.CFrame + Vector3.new(0,5,0) -- bay lên cao để né
+	end
+end
+
+-- Hàm bay dần về nhà
+local function flyToHome()
+	if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+	local root = player.Character.HumanoidRootPart
+
+	flyingHome = true
+	while flyingHome and homePosition and task.wait(0.1) do
+		if not root.Parent then break end
+
+		-- Di chuyển mượt (lerp)
+		local newPos = root.Position:Lerp(homePosition + Vector3.new(0,3,0), 0.1)
+		root.CFrame = CFrame.new(newPos, homePosition)
+
+		-- Né vật cản
+		avoidObstacle(root)
+
+		-- Dừng khi đã về gần nhà
+		if (root.Position - homePosition).Magnitude < 5 then
+			flyingHome = false
+			button.Text = "Về Nhà"
+			break
+		end
+	end
+end
+
+-- Anti die: khi respawn thì tự về nhà
+local function setupAntiDie(char)
+	char:WaitForChild("Humanoid").Died:Connect(function()
+		task.wait(1)
+		if homeSaved then
+			flyToHome()
+		end
+	end)
+end
+
+player.CharacterAdded:Connect(function(char)
+	if homeSaved then
+		setupAntiDie(char)
+		task.wait(1)
+		flyToHome()
+	end
+end)
+
+-- Anti giật: nếu bị kéo xa khỏi nhà thì bay lại
+RunService.Heartbeat:Connect(function()
+	if homeSaved and not flyingHome and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		local root = player.Character.HumanoidRootPart
+		if (root.Position - homePosition).Magnitude > 100 then
+			flyToHome()
+		end
+	end
+end)
+
+-- Nút bấm
+button.MouseButton1Click:Connect(function()
+	local char = player.Character or player.CharacterAdded:Wait()
+	local root = char:WaitForChild("HumanoidRootPart")
+
+	if not homeSaved then
+		-- Lần đầu: lưu nhà
+		homePosition = root.Position
+		homeSaved = true
+		button.Text = "Về Nhà"
+		setupAntiDie(char)
+	else
+		-- Lần sau: bay về nhà
+		if not flyingHome then
+			button.Text = "Đang bay..."
+			flyToHome()
+		else
+			flyingHome = false
+			button.Text = "Về Nhà"
+		end
+	end
+end)
