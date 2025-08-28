@@ -1,0 +1,54 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Tạo GUI chính
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PositionGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Nút bật/tắt
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 40)
+toggleButton.Position = UDim2.new(0, 10, 0, 60) -- góc trên trái
+toggleButton.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Text = "Hiện Vị Trí"
+toggleButton.Parent = screenGui
+
+-- Khung hiển thị tọa độ
+local posLabel = Instance.new("TextLabel")
+posLabel.Size = UDim2.new(0, 200, 0, 50)
+posLabel.Position = UDim2.new(0, 10, 0, 10)
+posLabel.BackgroundTransparency = 0.3
+posLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+posLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+posLabel.TextScaled = true
+posLabel.Visible = false
+posLabel.Parent = screenGui
+
+-- Biến bật/tắt
+local showing = false
+
+-- Xử lý khi bấm nút
+toggleButton.MouseButton1Click:Connect(function()
+	showing = not showing
+	posLabel.Visible = showing
+	if showing then
+		toggleButton.Text = "Tắt Vị Trí"
+	else
+		toggleButton.Text = "Hiện Vị Trí"
+	end
+end)
+
+-- Cập nhật vị trí liên tục
+while task.wait(0.5) do
+	if showing then
+		local char = player.Character or player.CharacterAdded:Wait()
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if root then
+			local pos = root.Position
+			posLabel.Text = string.format("{%d, %d, %d}", math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z))
+		end
+	end
+end
