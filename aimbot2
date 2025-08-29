@@ -1,4 +1,4 @@
--- FULL SCRIPT: GUI Toggle + ESP + Hitbox cực to + Anti-AFK
+-- FULL SCRIPT: GUI Toggle + ESP + Hitbox cực to + Anti-AFK (fix rơi hitbox & ESP)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -6,10 +6,9 @@ local Camera = workspace.CurrentCamera
 
 -- ========== CẤU HÌNH ==========
 local HITBOX_SIZE = Vector3.new(50,50,50) -- cực to
-local HITBOX_TRANSPARENCY = 0.3
 local HITBOX_COLOR = BrickColor.new("Really red")
-local HITBOX_OFFSET = Vector3.new(0,25,0) -- nâng lên trên đầu nhân vật
-local DRAWING_FALLBACK = true
+local HITBOX_TRANSPARENCY = 0.3
+local HITBOX_OFFSET = Vector3.new(0,25,0) -- nâng lên đầu nhân vật
 
 -- ========== UI ==========
 local ScreenGui = Instance.new("ScreenGui")
@@ -64,28 +63,16 @@ end)
 local ESP_Enabled = false
 local HITBOX_Enabled = false
 
-local espData = {}    
-local hitboxData = {} 
-
-local DrawingAvailable = false
-if typeof(Drawing) == "table" or (Drawing ~= nil and type(Drawing.new) == "function") then
-    DrawingAvailable = true
-end
+local espData = {}
+local hitboxData = {}
 
 -- ========== ESP ==========
 local function cleanupESPForPlayer(player)
     local info = espData[player]
     if not info then return end
     if info.conn and info.conn.Disconnect then pcall(function() info.conn:Disconnect() end) end
-    if info.charCon then pcall(function() info.charCon:Disconnect() end) end
-    if info.ancestryCon then pcall(function() info.ancestryCon:Disconnect() end) end
-    if info.type == "drawing" and info.obj then pcall(function() info.obj:Remove() end)
-    elseif info.type == "billboard" and info.obj then pcall(function() info.obj:Destroy() end) end
+    if info.billboard then pcall(function() info.billboard:Destroy() end) end
     espData[player] = nil
-end
-
-local function cleanupAllESP()
-    for p,_ in pairs(espData) do cleanupESPForPlayer(p) end
 end
 
 local function createESPForCharacter(player, character)
@@ -95,77 +82,34 @@ local function createESPForCharacter(player, character)
     local humanoid = character:FindFirstChild("Humanoid")
     if not head or not humanoid then return end
 
-    if DrawingAvailable then
-        local text = Drawing.new("Text")
-        text.Center = true
-        text.Outline = false
-        text.Font = 3
-        text.Size = 16
-        text.Color = Color3.fromRGB(0,255,255)
-        text.Visible = false
-        text.Text = "[ " .. player.Name .. " ]"
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Billboard_"..player.Name
+    billboard.Size = UDim2.new(0,120,0,30)
+    billboard.StudsOffset = Vector3.new(0,2,0)
+    billboard.AlwaysOnTop = true
 
-        local ancestryCon = character.AncestryChanged:Connect(function(_, parent)
-            if not parent then
-                pcall(function() text:Remove() end)
-                cleanupESPForPlayer(player)
-            end
-        end)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(0,255,255)
+    label.Text = "[ "..player.Name.." ]"
+    label.Font = Enum.Font.SourceSansBold
+    label.TextScaled = true
+    label.Parent = billboard
 
-        local renderCon
-        renderCon = RunService.RenderStepped:Connect(function()
-            if not ESP_Enabled then
-                text.Visible = false
-                return
-            end
-            if humanoid.Health <=0 then text.Visible = false return end
-            local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-            if onScreen then
-                text.Position = Vector2.new(pos.X,pos.Y-27)
-                text.Visible = true
-            else
-                text.Visible = false
-            end
-        end)
+    billboard.Parent = head
 
-        espData[player] = {type="drawing", obj=text, conn=renderCon, charCon=nil, ancestryCon=ancestryCon}
+    local renderCon
+    renderCon = RunService.RenderStepped:Connect(function()
+        if not ESP_Enabled then
+            billboard.Enabled = false
+            return
+        end
+        if humanoid.Health <= 0 then billboard.Enabled = false return end
+        billboard.Enabled = true
+    end)
 
-    else
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "ESP_Billboard_"..player.Name
-        billboard.Size = UDim2.new(0,120,0,30)
-        billboard.StudsOffset = Vector3.new(0,2,0)
-        billboard.AlwaysOnTop = true
-
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1,0,1,0)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.fromRGB(0,255,255)
-        label.Text = "[ " .. player.Name .. " ]"
-        label.Font = Enum.Font.SourceSansBold
-        label.TextScaled = true
-        label.Parent = billboard
-
-        billboard.Parent = head
-
-        local ancestryCon = character.AncestryChanged:Connect(function(_, parent)
-            if not parent then
-                pcall(function() billboard:Destroy() end)
-                cleanupESPForPlayer(player)
-            end
-        end)
-
-        local renderCon = RunService.RenderStepped:Connect(function()
-            if not ESP_Enabled then
-                billboard.Enabled = false
-                return
-            end
-            if humanoid.Health <= 0 then billboard.Enabled = false return end
-            billboard.Enabled = true
-        end)
-
-        espData[player] = {type="billboard", obj=billboard, conn=renderCon, charCon=nil, ancestryCon=ancestryCon}
-    end
+    espData[player] = {billboard=billboard, conn=renderCon}
 end
 
 local function ensureESPForPlayer(player)
@@ -175,12 +119,10 @@ local function ensureESPForPlayer(player)
     if char and char:FindFirstChild("Head") and char:FindFirstChild("Humanoid") then
         createESPForCharacter(player, char)
     end
-    local charCon = player.CharacterAdded:Connect(function(cr)
+    player.CharacterAdded:Connect(function(cr)
         task.wait(0.05)
         createESPForCharacter(player, cr)
     end)
-    if espData[player] then espData[player].charCon = charCon
-    else espData[player] = espData[player] or {}; espData[player].charCon = charCon end
 end
 
 -- ========== HITBOX ==========
@@ -188,12 +130,7 @@ local function cleanupHitboxForPlayer(player)
     local info = hitboxData[player]
     if not info then return end
     if info.part then pcall(function() info.part:Destroy() end) end
-    if info.charCon then pcall(function() info.charCon:Disconnect() end) end
     hitboxData[player] = nil
-end
-
-local function cleanupAllHitboxes()
-    for p,_ in pairs(hitboxData) do cleanupHitboxForPlayer(p) end
 end
 
 local function createHitboxForCharacter(player, character)
@@ -203,30 +140,25 @@ local function createHitboxForCharacter(player, character)
     if not hrp then return end
 
     local part = Instance.new("Part")
-    part.Name = "HitboxVisual_"..player.Name
     part.Size = HITBOX_SIZE
-    part.Transparency = HITBOX_TRANSPARENCY
+    part.Anchored = true
     part.CanCollide = false
-    part.Anchored = false
     part.Material = Enum.Material.Neon
     part.BrickColor = HITBOX_COLOR
+    part.Transparency = HITBOX_TRANSPARENCY
     part.Parent = workspace
 
-    local weld = Instance.new("WeldConstraint")
-    weld.Part0 = part
-    weld.Part1 = hrp
-    weld.Parent = part
-
-    -- nâng lên trên đầu nhân vật
-    part.CFrame = hrp.CFrame + HITBOX_OFFSET
-
-    local ancestryCon = character.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            cleanupHitboxForPlayer(player)
+    -- cập nhật vị trí mỗi frame
+    local renderCon
+    renderCon = RunService.RenderStepped:Connect(function()
+        if HITBOX_Enabled and hrp.Parent then
+            part.CFrame = hrp.CFrame + HITBOX_OFFSET
+        else
+            part.Transparency = 1
         end
     end)
 
-    hitboxData[player] = {part=part, weld=weld, charCon=ancestryCon}
+    hitboxData[player] = {part=part, conn=renderCon}
 end
 
 local function ensureHitboxForPlayer(player)
@@ -236,18 +168,19 @@ local function ensureHitboxForPlayer(player)
     if char and char:FindFirstChild("HumanoidRootPart") then
         createHitboxForCharacter(player, char)
     end
-    local charCon = player.CharacterAdded:Connect(function(cr)
+    player.CharacterAdded:Connect(function(cr)
         task.wait(0.05)
         createHitboxForCharacter(player, cr)
     end)
-    if hitboxData[player] then hitboxData[player].charCon = hitboxData[player].charCon or charCon
-    else hitboxData[player] = hitboxData[player] or {}; hitboxData[player].charCon = charCon end
 end
 
 -- ========== TOGGLE HANDLERS ==========
 local function enableESP(state)
     ESP_Enabled = state
-    if not ESP_Enabled then cleanupAllESP() return end
+    if not ESP_Enabled then
+        for p,_ in pairs(espData) do cleanupESPForPlayer(p) end
+        return
+    end
     for _,p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then ensureESPForPlayer(p) end
     end
@@ -255,7 +188,10 @@ end
 
 local function enableHitbox(state)
     HITBOX_Enabled = state
-    if not HITBOX_Enabled then cleanupAllHitboxes() return end
+    if not HITBOX_Enabled then
+        for p,_ in pairs(hitboxData) do cleanupHitboxForPlayer(p) end
+        return
+    end
     for _,p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then ensureHitboxForPlayer(p) end
     end
@@ -312,6 +248,6 @@ pcall(function()
     game.StarterGui:SetCore("SendNotification", {
         Title = "HelperGui";
         Text = "Script sẵn sàng — mở Menu để bật tính năng";
-        Duration = 2;
+        Duration = 2,
     })
 end)
