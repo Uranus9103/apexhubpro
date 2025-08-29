@@ -1,4 +1,4 @@
---// FULL SCRIPT: Draggable Menu + Top-Right Toggle + ESP + Hitbox + AntiAFK
+--// FULL SCRIPT: ESP + Hitbox + AntiAFK + Draggable UI Menu
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,7 +14,7 @@ ScreenGui.Name = "HelperGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Main Frame (draggable)
+-- Main Frame (draggable menu)
 local Frame = Instance.new("Frame")
 Frame.Size = UDim2.new(0,220,0,250)
 Frame.Position = UDim2.new(0.5, -110,0.5, -125)
@@ -23,7 +23,7 @@ Frame.Active = true
 Frame.Parent = ScreenGui
 Frame.Visible = false
 
--- TitleBar (dùng để kéo menu)
+-- Title Bar (dùng để kéo menu)
 local TitleBar = Instance.new("TextLabel")
 TitleBar.Size = UDim2.new(1,0,0,30)
 TitleBar.Position = UDim2.new(0,0,0,0)
@@ -39,8 +39,9 @@ do
     local dragInput, dragStart, startPos
     local function update(input)
         local delta = input.Position - dragStart
-        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        local newX = math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - Frame.AbsoluteSize.X)
+        local newY = math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - Frame.AbsoluteSize.Y)
+        Frame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
     end
     TitleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -66,7 +67,7 @@ do
     end)
 end
 
--- UI layout
+-- UI layout for buttons
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Frame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
