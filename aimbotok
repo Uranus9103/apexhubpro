@@ -1,7 +1,6 @@
---// FULL HELPER SCRIPT: ESP + Hitbox + AntiAFK + Draggable Menu + Toggle Button
+--// FULL HELPER SCRIPT: ESP + Hitbox + AntiAFK + Draggable Menu + Toggle Button Góc Phải
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -33,10 +32,10 @@ TitleBar.Text = "Helper Menu"
 TitleBar.TextScaled = true
 TitleBar.Parent = Frame
 
--- Toggle Button (ẩn/hiện menu)
+-- Toggle Button (ẩn/hiện menu) góc phải trên
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(0,120,0,30)
-ToggleBtn.Position = UDim2.new(0,10,0,260)
+ToggleBtn.Position = UDim2.new(1, -130, 0, 10) -- Góc phải trên
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
 ToggleBtn.TextColor3 = Color3.new(1,1,1)
 ToggleBtn.Text = "Ẩn/Hiện Menu"
