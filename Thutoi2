@@ -1,8 +1,9 @@
---// APEX HUB – Key System (Lưu Key 24h Local)
+--// APEX HUB – Key System Hoàn Chỉnh (1 file GitHub)
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
 
--- Danh sách Key và Link
+-- Danh sách Key + Link
 local Keys = {
     "Free_APEX382938@31",  
     "Free_tifsefujdAPEX38@137",  
@@ -18,7 +19,7 @@ local Links = {
     "https://link4m.com/Cxct1"
 }
 
--- Xác định key hôm nay
+-- Tính key hôm nay theo ngày UTC+7
 local unixUTC = DateTime.now().UnixTimestamp
 local unixLocal = unixUTC + 7*3600
 local index = (math.floor(unixLocal / 86400) % 5) + 1
@@ -28,15 +29,15 @@ local KeyLink = Links[index]
 -- File lưu thời gian nhập key
 local SaveFile = "apex_key_data.txt"
 
--- Hàm kiểm tra còn hạn không
+-- Hàm kiểm tra key còn hạn
 local function hasValidKey()
     if isfile and isfile(SaveFile) then
         local lastTime = tonumber(readfile(SaveFile))
         if lastTime and (os.time() - lastTime < 86400) then
-            return true
+            return lastTime
         end
     end
-    return false
+    return nil
 end
 
 -- Lưu thời gian nhập key
@@ -46,8 +47,39 @@ local function saveKeyTime()
     end
 end
 
--- Chạy script chính
-local function runMainScript()
+-- Hàm hiển thị thời gian còn lại
+local function showTimeLeft(lastTime)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "APEX_TimeLeft"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
+
+    local label = Instance.new("TextLabel", gui)
+    label.Size = UDim2.new(0, 200, 0, 30)
+    label.Position = UDim2.new(1, -210, 0, 10)
+    label.BackgroundTransparency = 0.3
+    label.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.GothamBold
+    label.TextScaled = true
+    Instance.new("UICorner", label).CornerRadius = UDim.new(0, 8)
+
+    task.spawn(function()
+        while label.Parent do
+            local elapsed = os.time() - lastTime
+            local remain = math.max(0, 86400 - elapsed)
+            local h = math.floor(remain/3600)
+            local m = math.floor((remain%3600)/60)
+            local s = remain%60
+            label.Text = string.format("⏳ Key còn: %02d:%02d:%02d", h, m, s)
+            task.wait(1)
+        end
+    end)
+end
+
+-- Script chính
+local function runMainScript(lastTime)
+    -- Nút chạy script
     local runBtn = Instance.new("TextButton")
     runBtn.Size = UDim2.new(0, 220, 0, 65)
     runBtn.Position = UDim2.new(0.5, -110, 0.5, -32)
@@ -80,15 +112,19 @@ local function runMainScript()
         end)
         runBtn:Destroy()
     end)
+
+    -- Hiển thị thời gian còn lại
+    showTimeLeft(lastTime)
 end
 
--- Nếu còn hạn thì chạy luôn
-if hasValidKey() then
-    runMainScript()
+-- Nếu key còn hạn thì chạy luôn
+local lastTime = hasValidKey()
+if lastTime then
+    runMainScript(lastTime)
     return
 end
 
--- Nếu hết hạn → hiện GUI
+-- GUI nhập key
 local gui = Instance.new("ScreenGui")
 gui.Name = "APEX_Key_GUI"
 gui.ResetOnSpawn = false
@@ -157,7 +193,7 @@ getKeyBtn.MouseButton1Click:Connect(function()
     if setclipboard then
         setclipboard(KeyLink)
     end
-    game:GetService("StarterGui"):SetCore("SendNotification", {
+    StarterGui:SetCore("SendNotification", {
         Title = "Thông báo",
         Text = "✅ Đã copy link Get Key vào clipboard!",
         Duration = 4
@@ -168,9 +204,9 @@ confirmBtn.MouseButton1Click:Connect(function()
     if box.Text == CorrectKey then
         saveKeyTime()
         gui:Destroy()
-        runMainScript()
+        runMainScript(os.time())
     else
-        game:GetService("StarterGui"):SetCore("SendNotification", {
+        StarterGui:SetCore("SendNotification", {
             Title = "❌ Sai Key",
             Text = "Vui lòng nhập lại!",
             Duration = 3
