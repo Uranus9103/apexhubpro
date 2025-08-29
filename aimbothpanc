@@ -37,13 +37,12 @@ local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Frame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.FillDirection = Enum.FillDirection.Vertical
-UIListLayout.Padding = UDim.new(0,5)
 UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-UIListLayout.Padding = UDim.new(0, 35)
+UIListLayout.Padding = UDim.new(0,5)
 
 --====================================================
--- Tạo nút
+-- Hàm tạo nút
 --====================================================
 local function createToggle(name, callback)
     local btn = Instance.new("TextButton")
