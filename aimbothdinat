@@ -1,4 +1,4 @@
---// FULL SCRIPT: ESP + Hitbox + AntiAFK + Draggable UI Menu
+--// FULL SCRIPT: ESP + Hitbox + AntiAFK + Draggable Menu
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,7 +14,7 @@ ScreenGui.Name = "HelperGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Main Frame (menu)
+-- Main Frame
 local Frame = Instance.new("Frame")
 Frame.Size = UDim2.new(0,220,0,250)
 Frame.Position = UDim2.new(0.5, -110,0.5, -125)
@@ -51,7 +51,7 @@ UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
 --====================================================
--- Draggable (Frame + ToggleBtn)
+-- Draggable (kéo menu + nút)
 --====================================================
 local dragging = false
 local dragInput, dragStart, startPos
@@ -251,7 +251,7 @@ Players.LocalPlayer.Idled:Connect(function()
 end)
 
 --====================================================
--- Gắn nút chức năng
+-- Nút menu
 --====================================================
 createToggle("ESP", function(state) enableESP(state) end)
 createToggle("Hitbox", function(state) HITBOX_Enabled = state end)
