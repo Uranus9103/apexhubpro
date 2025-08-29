@@ -1,0 +1,210 @@
+--// FULL SCRIPT: ESP + Hitbox + AntiAFK + UI Toggle (No Jump)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+--====================================================
+-- UI
+--====================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "HelperGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0,100,0,40)
+ToggleButton.Position = UDim2.new(1,-110,1,-50)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+ToggleButton.TextColor3 = Color3.new(1,1,1)
+ToggleButton.Text = "Menu"
+ToggleButton.Parent = ScreenGui
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0,180,0,250)
+Frame.Position = UDim2.new(1,-190,1,-300)
+Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Frame.Visible = false
+Frame.Parent = ScreenGui
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = Frame
+UIListLayout.FillDirection = Enum.FillDirection.Vertical
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0,5)
+
+-- Hàm tạo nút toggle
+local function createToggle(name, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,0,0,40)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = "[OFF] " .. name
+    btn.Parent = Frame
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = (state and "[ON] " or "[OFF] ") .. name
+        callback(state)
+    end)
+end
+
+-- Toggle menu
+ToggleButton.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+end)
+
+--====================================================
+-- ESP Name
+--====================================================
+local ESP_Enabled = false
+local ESP_Texts = {} -- lưu các Drawing text
+local ESP_Connections = {}
+
+local function clearESP()
+    for _, text in pairs(ESP_Texts) do
+        if text then
+            text:Remove()
+        end
+    end
+    ESP_Texts = {}
+    for _, con in pairs(ESP_Connections) do
+        con:Disconnect()
+    end
+    ESP_Connections = {}
+end
+
+local function enableESP(state)
+    ESP_Enabled = state
+    clearESP()
+    if not state then return end
+
+    local function esp(p,cr)
+        local h = cr:WaitForChild("Humanoid")
+        local head = cr:WaitForChild("Head")
+
+        local text = Drawing.new("Text")
+        text.Visible = false
+        text.Center = true
+        text.Outline = false 
+        text.Font = 3
+        text.Size = 16
+        text.Color = Color3.new(0,1,1)
+
+        table.insert(ESP_Texts, text)
+
+        local con = RunService.RenderStepped:Connect(function()
+            if ESP_Enabled and head and h.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    text.Position = Vector2.new(pos.X,pos.Y-27)
+                    text.Text = "[ "..p.Name.." ]"
+                    text.Visible = true
+                else
+                    text.Visible = false
+                end
+            else
+                text.Visible = false
+            end
+        end)
+        table.insert(ESP_Connections, con)
+    end
+
+    local function p_added(p)
+        if p ~= LocalPlayer then
+            local function charAdded(cr)
+                esp(p, cr)
+            end
+            if p.Character then charAdded(p.Character) end
+            p.CharacterAdded:Connect(charAdded)
+        end
+    end
+
+    for _,p in ipairs(Players:GetPlayers()) do
+        p_added(p)
+    end
+    table.insert(ESP_Connections, Players.PlayerAdded:Connect(p_added))
+end
+
+--====================================================
+-- Hitbox with adjustable dimensions
+--====================================================
+local HITBOX_Enabled = false
+_G.HitboxWidth = 10
+_G.HitboxHeight = 10
+_G.HitboxDepth = 10
+
+local function updateHitbox(v)
+    if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = v.Character.HumanoidRootPart
+        hrp.Size = Vector3.new(_G.HitboxWidth,_G.HitboxHeight,_G.HitboxDepth)
+        hrp.Transparency = 0.7
+        hrp.BrickColor = BrickColor.new("Really red")
+        hrp.Material = Enum.Material.Neon
+        hrp.CanCollide = false
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if HITBOX_Enabled then
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer then
+                pcall(function()
+                    updateHitbox(v)
+                end)
+            end
+        end
+    else
+        -- Reset hitbox khi tắt
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = v.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(2,2,1)
+                hrp.Transparency = 0
+                hrp.Material = Enum.Material.Plastic
+                hrp.BrickColor = BrickColor.new("Medium stone grey")
+                hrp.CanCollide = true
+            end
+        end
+    end
+end)
+
+--====================================================
+-- Hitbox adjustment buttons
+--====================================================
+local function createHitboxAdjustButton(name, dim, delta)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,0,0,35)
+    btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = name
+    btn.Parent = Frame
+
+    btn.MouseButton1Click:Connect(function()
+        _G[dim] = math.max(1,_G[dim]+delta)
+    end)
+end
+
+createHitboxAdjustButton("Width +", "HitboxWidth", 2)
+createHitboxAdjustButton("Width -", "HitboxWidth", -2)
+createHitboxAdjustButton("Height +", "HitboxHeight", 2)
+createHitboxAdjustButton("Height -", "HitboxHeight", -2)
+createHitboxAdjustButton("Depth +", "HitboxDepth", 2)
+createHitboxAdjustButton("Depth -", "HitboxDepth", -2)
+
+--====================================================
+-- Anti AFK
+--====================================================
+Players.LocalPlayer.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end)
+
+--====================================================
+-- Gắn nút chức năng
+--====================================================
+createToggle("ESP", function(state) enableESP(state) end)
+createToggle("Hitbox", function(state) HITBOX_Enabled = state end)
