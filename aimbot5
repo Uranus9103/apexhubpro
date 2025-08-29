@@ -1,4 +1,4 @@
---// FULL SCRIPT: ESP + Hitbox + AntiAFK + UI Toggle (No Jump)
+--// FULL SCRIPT: ESP + Hitbox + AntiAFK + UI Toggle + Draggable Menu + Slider Hitbox
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,20 +14,26 @@ ScreenGui.Name = "HelperGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Menu toggle button
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Size = UDim2.new(0,100,0,40)
-ToggleButton.Position = UDim2.new(1,-110,1,-50)
+ToggleButton.Position = UDim2.new(0.8,0,0.8,0)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
 ToggleButton.TextColor3 = Color3.new(1,1,1)
 ToggleButton.Text = "Menu"
 ToggleButton.Parent = ScreenGui
 
+-- Menu frame
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0,180,0,250)
-Frame.Position = UDim2.new(1,-190,1,-300)
+Frame.Size = UDim2.new(0,220,0,300)
+Frame.Position = UDim2.new(0.75,0,0.75,0)
 Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 Frame.Visible = false
 Frame.Parent = ScreenGui
+
+-- Draggable menu
+Frame.Active = true
+Frame.Draggable = true
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Frame
@@ -35,10 +41,17 @@ UIListLayout.FillDirection = Enum.FillDirection.Vertical
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0,5)
 
--- Hàm tạo nút toggle
+-- Toggle menu visibility
+ToggleButton.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+end)
+
+--====================================================
+-- Utility: Toggle Button
+--====================================================
 local function createToggle(name, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,0,0,40)
+    btn.Size = UDim2.new(1,0,0,35)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
     btn.Text = "[OFF] " .. name
@@ -51,16 +64,11 @@ local function createToggle(name, callback)
     end)
 end
 
--- Toggle menu
-ToggleButton.MouseButton1Click:Connect(function()
-    Frame.Visible = not Frame.Visible
-end)
-
 --====================================================
 -- ESP Name
 --====================================================
 local ESP_Enabled = false
-local ESP_Texts = {} -- lưu các Drawing text
+local ESP_Texts = {}
 local ESP_Connections = {}
 
 local function clearESP()
@@ -129,7 +137,7 @@ local function enableESP(state)
 end
 
 --====================================================
--- Hitbox with adjustable dimensions
+-- Hitbox with Slider
 --====================================================
 local HITBOX_Enabled = false
 _G.HitboxWidth = 10
@@ -157,7 +165,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     else
-        -- Reset hitbox khi tắt
         for _,v in ipairs(Players:GetPlayers()) do
             if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
                 local hrp = v.Character.HumanoidRootPart
@@ -172,27 +179,53 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --====================================================
--- Hitbox adjustment buttons
+-- Hitbox Slider Function
 --====================================================
-local function createHitboxAdjustButton(name, dim, delta)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,0,0,35)
-    btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Text = name
-    btn.Parent = Frame
+local function createSlider(labelText, dimension)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1,0,0,25)
+    label.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    label.TextColor3 = Color3.new(1,1,1)
+    label.Text = labelText .. ": " .. _G[dimension]
+    label.Parent = Frame
 
-    btn.MouseButton1Click:Connect(function()
-        _G[dim] = math.max(1,_G[dim]+delta)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1,0,0,20)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    sliderFrame.Parent = Frame
+
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Size = UDim2.new((_G[dimension]/50),0,1,0)
+    sliderBar.BackgroundColor3 = Color3.fromRGB(200,0,0)
+    sliderBar.Parent = sliderFrame
+
+    local dragging = false
+    sliderFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
+    end)
+    sliderFrame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    RunService.RenderStepped:Connect(function()
+        if dragging then
+            local mouse = UserInputService:GetMouseLocation()
+            local posX = math.clamp(mouse.X - sliderFrame.AbsolutePosition.X,0,sliderFrame.AbsoluteSize.X)
+            local percent = posX/sliderFrame.AbsoluteSize.X
+            _G[dimension] = math.floor(1 + percent*50)
+            sliderBar.Size = UDim2.new(percent,0,1,0)
+            label.Text = labelText .. ": " .. _G[dimension]
+        end
     end)
 end
 
-createHitboxAdjustButton("Width +", "HitboxWidth", 2)
-createHitboxAdjustButton("Width -", "HitboxWidth", -2)
-createHitboxAdjustButton("Height +", "HitboxHeight", 2)
-createHitboxAdjustButton("Height -", "HitboxHeight", -2)
-createHitboxAdjustButton("Depth +", "HitboxDepth", 2)
-createHitboxAdjustButton("Depth -", "HitboxDepth", -2)
+-- Create sliders for width, height, depth
+createSlider("Width", "HitboxWidth")
+createSlider("Height", "HitboxHeight")
+createSlider("Depth", "HitboxDepth")
 
 --====================================================
 -- Anti AFK
@@ -204,7 +237,7 @@ Players.LocalPlayer.Idled:Connect(function()
 end)
 
 --====================================================
--- Gắn nút chức năng
+-- Attach toggle buttons
 --====================================================
 createToggle("ESP", function(state) enableESP(state) end)
 createToggle("Hitbox", function(state) HITBOX_Enabled = state end)
