@@ -1,13 +1,14 @@
--- FULL FIXED: UI toggle + ESP + Hitbox visual + Anti-AFK (No InfiniteJump)
+-- FULL SCRIPT: GUI Toggle + ESP + Hitbox cực to + Anti-AFK
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- ========== CẤU HÌNH ==========
-local HITBOX_SIZE = Vector3.new(12, 12, 12) -- Hitbox to lên
-local HITBOX_TRANSPARENCY = 0.5
+local HITBOX_SIZE = Vector3.new(50,50,50) -- cực to
+local HITBOX_TRANSPARENCY = 0.3
 local HITBOX_COLOR = BrickColor.new("Really red")
+local HITBOX_OFFSET = Vector3.new(0,25,0) -- nâng lên trên đầu nhân vật
 local DRAWING_FALLBACK = true
 
 -- ========== UI ==========
@@ -75,27 +76,16 @@ end
 local function cleanupESPForPlayer(player)
     local info = espData[player]
     if not info then return end
-    if info.conn and info.conn.Disconnect then
-        pcall(function() info.conn:Disconnect() end)
-    end
-    if info.charCon then
-        pcall(function() info.charCon:Disconnect() end)
-    end
-    if info.ancestryCon then
-        pcall(function() info.ancestryCon:Disconnect() end)
-    end
-    if info.type == "drawing" and info.obj then
-        pcall(function() info.obj:Remove() end)
-    elseif info.type == "billboard" and info.obj then
-        pcall(function() info.obj:Destroy() end)
-    end
+    if info.conn and info.conn.Disconnect then pcall(function() info.conn:Disconnect() end) end
+    if info.charCon then pcall(function() info.charCon:Disconnect() end) end
+    if info.ancestryCon then pcall(function() info.ancestryCon:Disconnect() end) end
+    if info.type == "drawing" and info.obj then pcall(function() info.obj:Remove() end)
+    elseif info.type == "billboard" and info.obj then pcall(function() info.obj:Destroy() end) end
     espData[player] = nil
 end
 
 local function cleanupAllESP()
-    for p,_ in pairs(espData) do
-        cleanupESPForPlayer(p)
-    end
+    for p,_ in pairs(espData) do cleanupESPForPlayer(p) end
 end
 
 local function createESPForCharacter(player, character)
@@ -197,19 +187,13 @@ end
 local function cleanupHitboxForPlayer(player)
     local info = hitboxData[player]
     if not info then return end
-    if info.part then
-        pcall(function() info.part:Destroy() end)
-    end
-    if info.charCon then
-        pcall(function() info.charCon:Disconnect() end)
-    end
+    if info.part then pcall(function() info.part:Destroy() end) end
+    if info.charCon then pcall(function() info.charCon:Disconnect() end) end
     hitboxData[player] = nil
 end
 
 local function cleanupAllHitboxes()
-    for p,_ in pairs(hitboxData) do
-        cleanupHitboxForPlayer(p)
-    end
+    for p,_ in pairs(hitboxData) do cleanupHitboxForPlayer(p) end
 end
 
 local function createHitboxForCharacter(player, character)
@@ -233,8 +217,8 @@ local function createHitboxForCharacter(player, character)
     weld.Part1 = hrp
     weld.Parent = part
 
-    -- nâng lên 1 chút
-    part.CFrame = hrp.CFrame + Vector3.new(0,HITBOX_SIZE.Y/2,0)
+    -- nâng lên trên đầu nhân vật
+    part.CFrame = hrp.CFrame + HITBOX_OFFSET
 
     local ancestryCon = character.AncestryChanged:Connect(function(_, parent)
         if not parent then
@@ -277,7 +261,6 @@ local function enableHitbox(state)
     end
 end
 
--- khi player vào server
 Players.PlayerAdded:Connect(function(p)
     if p == LocalPlayer then return end
     if ESP_Enabled then ensureESPForPlayer(p) end
