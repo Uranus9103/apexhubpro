@@ -1,0 +1,127 @@
+--// Aimbot Script with Toggle + ESP
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local AIM_RANGE = 40
+local aimbotEnabled = false
+local currentTarget = nil
+local espHighlight = nil
+
+-- GUI Toggle Button
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AimbotGUI"
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 120, 0, 40)
+toggleBtn.Position = UDim2.new(1, -130, 1, -50) -- góc phải dưới
+toggleBtn.Text = "Aimbot: OFF"
+toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Parent = screenGui
+
+toggleBtn.MouseButton1Click:Connect(function()
+	aimbotEnabled = not aimbotEnabled
+	if aimbotEnabled then
+		toggleBtn.Text = "Aimbot: ON"
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+	else
+		toggleBtn.Text = "Aimbot: OFF"
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+		if espHighlight then
+			espHighlight:Destroy()
+			espHighlight = nil
+			currentTarget = nil
+		end
+	end
+end)
+
+-- Tìm target gần nhất
+local function getNearestTarget(maxDistance)
+	local bestTarget = nil
+	local shortest = maxDistance
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = plr.Character.HumanoidRootPart
+			local dist = (hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+			if dist < shortest then
+				shortest = dist
+				bestTarget = plr
+			end
+		end
+	end
+
+	return bestTarget
+end
+
+-- Cập nhật ESP highlight
+local function updateESP(targetPlayer)
+	if not targetPlayer or not targetPlayer.Character then
+		if espHighlight then
+			espHighlight:Destroy()
+			espHighlight = nil
+		end
+		currentTarget = nil
+		return
+	end
+
+	if currentTarget ~= targetPlayer then
+		if espHighlight then
+			espHighlight:Destroy()
+		end
+
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = Color3.fromRGB(255, 0, 0)
+		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+		highlight.FillTransparency = 0.5
+		highlight.OutlineTransparency = 0
+		highlight.Adornee = targetPlayer.Character
+		highlight.Parent = targetPlayer.Character
+
+		espHighlight = highlight
+		currentTarget = targetPlayer
+	end
+end
+
+-- Aimbot khi dùng tool / skill
+local function onEquipped(tool)
+	if not tool:IsA("Tool") then return end
+
+	tool.Activated:Connect(function()
+		if aimbotEnabled then
+			local targetPlayer = getNearestTarget(AIM_RANGE)
+			if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+				updateESP(targetPlayer)
+				local target = targetPlayer.Character.HumanoidRootPart
+
+				-- Nếu tool bắn raycast
+				if tool:FindFirstChild("Handle") then
+					Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+				end
+
+				-- Nếu tool tạo projectile thì chỉnh hướng
+				for _, obj in pairs(workspace:GetChildren()) do
+					if obj:IsA("Part") and obj.Name == "Projectile" and obj:FindFirstChild("Creator") and obj.Creator.Value == LocalPlayer then
+						local dir = (target.Position - obj.Position).Unit
+						obj.Velocity = dir * obj.Velocity.Magnitude
+					end
+				end
+			else
+				updateESP(nil)
+			end
+		end
+	end)
+end
+
+-- Theo dõi khi trang bị tool
+LocalPlayer.CharacterAdded:Connect(function(char)
+	char.ChildAdded:Connect(onEquipped)
+end)
+
+if LocalPlayer.Character then
+	LocalPlayer.Character.ChildAdded:Connect(onEquipped)
+end
+
+print("✅ Aimbot + ESP script loaded")
