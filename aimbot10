@@ -1,4 +1,4 @@
---// FULL SCRIPT: ESP + Hitbox + AntiAFK + Draggable UI + Top-Right Button
+--// FULL SCRIPT: Draggable Menu + Top-Right Toggle + ESP + Hitbox + AntiAFK
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,7 +14,70 @@ ScreenGui.Name = "HelperGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Toggle menu button (góc trên bên phải)
+-- Main Frame (draggable)
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0,220,0,250)
+Frame.Position = UDim2.new(0.5, -110,0.5, -125)
+Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Frame.Active = true
+Frame.Parent = ScreenGui
+Frame.Visible = false
+
+-- TitleBar (dùng để kéo menu)
+local TitleBar = Instance.new("TextLabel")
+TitleBar.Size = UDim2.new(1,0,0,30)
+TitleBar.Position = UDim2.new(0,0,0,0)
+TitleBar.BackgroundColor3 = Color3.fromRGB(50,50,50)
+TitleBar.TextColor3 = Color3.new(1,1,1)
+TitleBar.Text = "Helper Menu"
+TitleBar.TextScaled = true
+TitleBar.Parent = Frame
+
+-- Make Frame draggable via TitleBar
+do
+    local dragging = false
+    local dragInput, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+-- UI layout
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = Frame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.FillDirection = Enum.FillDirection.Vertical
+UIListLayout.Padding = UDim.new(0,5)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+
+--====================================================
+-- Toggle menu button (Top-Right)
+--====================================================
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Size = UDim2.new(0,100,0,40)
 ToggleButton.Position = UDim2.new(1,-110,0,10)
@@ -23,77 +86,31 @@ ToggleButton.TextColor3 = Color3.new(1,1,1)
 ToggleButton.Text = "Menu"
 ToggleButton.Parent = ScreenGui
 
--- Main Frame (draggable)
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0,200,0,200)
-Frame.Position = UDim2.new(0.5, -100,0.5, -100)
-Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-Frame.Visible = false
-Frame.Parent = ScreenGui
-
--- Make Frame draggable
-local dragging = false
-local dragInput, dragStart, startPos
-local function update(input)
-    local delta = input.Position - dragStart
-    Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-Frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = Frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-Frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
-end)
-
--- UI layout
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = Frame
-UIListLayout.FillDirection = Enum.FillDirection.Vertical
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0,5)
-
--- Toggle menu visibility
 ToggleButton.MouseButton1Click:Connect(function()
     Frame.Visible = not Frame.Visible
 end)
 
 --====================================================
--- Functions to create UI buttons
+-- Functions to create buttons
 --====================================================
 local function createToggle(name, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,0,0,40)
+    btn.Size = UDim2.new(0,200,0,40)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
-    btn.Text = "[OFF] " .. name
+    btn.Text = "[OFF] "..name
     btn.Parent = Frame
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
-        btn.Text = (state and "[ON] " or "[OFF] ") .. name
+        btn.Text = (state and "[ON] " or "[OFF] ")..name
         callback(state)
     end)
 end
 
 local function createAdjustButton(name, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,0,0,35)
+    btn.Size = UDim2.new(0,200,0,35)
     btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
     btn.TextColor3 = Color3.new(1,1,1)
     btn.Text = name
@@ -110,14 +127,10 @@ local ESP_Connections = {}
 
 local function clearESP()
     for _, text in pairs(ESP_Texts) do
-        if text then
-            text:Remove()
-        end
+        if text then text:Remove() end
     end
     ESP_Texts = {}
-    for _, con in pairs(ESP_Connections) do
-        con:Disconnect()
-    end
+    for _, con in pairs(ESP_Connections) do con:Disconnect() end
     ESP_Connections = {}
 end
 
@@ -126,7 +139,7 @@ local function enableESP(state)
     clearESP()
     if not state then return end
 
-    local function esp(p,cr)
+    local function esp(p, cr)
         local h = cr:WaitForChild("Humanoid")
         local head = cr:WaitForChild("Head")
 
@@ -137,7 +150,6 @@ local function enableESP(state)
         text.Font = 3
         text.Size = 16
         text.Color = Color3.new(0,1,1)
-
         table.insert(ESP_Texts, text)
 
         local con = RunService.RenderStepped:Connect(function()
@@ -194,13 +206,10 @@ RunService.RenderStepped:Connect(function()
     if HITBOX_Enabled then
         for _,v in ipairs(Players:GetPlayers()) do
             if v ~= LocalPlayer then
-                pcall(function()
-                    updateHitbox(v)
-                end)
+                pcall(function() updateHitbox(v) end)
             end
         end
     else
-        -- Reset hitbox khi tắt
         for _,v in ipairs(Players:GetPlayers()) do
             if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
                 local hrp = v.Character.HumanoidRootPart
