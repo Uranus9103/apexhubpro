@@ -14,16 +14,15 @@ ScreenGui.Name = "HelperGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Main Frame (draggable menu)
+-- Main Frame
 local Frame = Instance.new("Frame")
 Frame.Size = UDim2.new(0,220,0,250)
 Frame.Position = UDim2.new(0.5, -110,0.5, -125)
 Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 Frame.Active = true
 Frame.Parent = ScreenGui
-Frame.Visible = false
 
--- Title Bar (dùng để kéo menu)
+-- Title Bar
 local TitleBar = Instance.new("TextLabel")
 TitleBar.Size = UDim2.new(1,0,0,30)
 TitleBar.Position = UDim2.new(0,0,0,0)
@@ -33,41 +32,7 @@ TitleBar.Text = "Helper Menu"
 TitleBar.TextScaled = true
 TitleBar.Parent = Frame
 
--- Make Frame draggable via TitleBar
-do
-    local dragging = false
-    local dragInput, dragStart, startPos
-    local function update(input)
-        local delta = input.Position - dragStart
-        local newX = math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - Frame.AbsoluteSize.X)
-        local newY = math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - Frame.AbsoluteSize.Y)
-        Frame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
-    end
-    TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = Frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    TitleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
-    end)
-end
-
--- UI layout for buttons
+-- Layout cho các nút
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Frame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -75,28 +40,14 @@ UIListLayout.FillDirection = Enum.FillDirection.Vertical
 UIListLayout.Padding = UDim.new(0,5)
 UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+UIListLayout.Padding = UDim.new(0, 35)
 
 --====================================================
--- Toggle menu button (Top-Right)
---====================================================
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0,100,0,40)
-ToggleButton.Position = UDim2.new(1,-110,0,10)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
-ToggleButton.TextColor3 = Color3.new(1,1,1)
-ToggleButton.Text = "Menu"
-ToggleButton.Parent = ScreenGui
-
-ToggleButton.MouseButton1Click:Connect(function()
-    Frame.Visible = not Frame.Visible
-end)
-
---====================================================
--- Functions to create buttons
+-- Tạo nút
 --====================================================
 local function createToggle(name, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,200,0,40)
+    btn.Size = UDim2.new(0,200,0,35)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
     btn.Text = "[OFF] "..name
@@ -224,13 +175,8 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Hitbox adjustment buttons
-createAdjustButton("Hitbox +", function()
-    _G.HitboxSize = _G.HitboxSize + 2
-end)
-createAdjustButton("Hitbox -", function()
-    _G.HitboxSize = math.max(2,_G.HitboxSize - 2)
-end)
+createAdjustButton("Hitbox +", function() _G.HitboxSize = _G.HitboxSize + 2 end)
+createAdjustButton("Hitbox -", function() _G.HitboxSize = math.max(2,_G.HitboxSize - 2) end)
 
 --====================================================
 -- Anti AFK
@@ -246,3 +192,60 @@ end)
 --====================================================
 createToggle("ESP", function(state) enableESP(state) end)
 createToggle("Hitbox", function(state) HITBOX_Enabled = state end)
+
+--====================================================
+-- Draggable menu (kéo toàn bộ menu + nút)
+--====================================================
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    local newX = startPos.X.Offset + delta.X
+    local newY = startPos.Y.Offset + delta.Y
+
+    -- Giới hạn menu trong màn hình
+    local screenW = Camera.ViewportSize.X
+    local screenH = Camera.ViewportSize.Y
+    local frameW = Frame.AbsoluteSize.X
+    local frameH = Frame.AbsoluteSize.Y
+
+    newX = math.clamp(newX, 0, screenW - frameW)
+    newY = math.clamp(newY, 0, screenH - frameH)
+
+    Frame.Position = UDim2.new(0, newX, 0, newY)
+end
+
+local function makeDraggable(guiObject)
+    guiObject.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    guiObject.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+end
+
+-- Kéo Frame và tất cả nút con
+makeDraggable(Frame)
+for _,child in pairs(Frame:GetChildren()) do
+    if child:IsA("TextButton") then
+        makeDraggable(child)
+    end
+end
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
