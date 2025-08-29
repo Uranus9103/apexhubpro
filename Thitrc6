@@ -1,0 +1,129 @@
+-- Aimbot Soft-Lock (chỉ dùng cho game của bạn)
+-- Gộp server + client, có nút UI để bật/tắt
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+-- ================= CẤU HÌNH =================
+local MAX_DISTANCE = 200     -- khoảng cách tối đa
+local FOV_DEGREES = 22       -- góc nón lock
+local SMOOTHNESS = 0.15      -- độ mượt (0..1)
+-- ============================================
+
+-- Trạng thái
+local isLocking = false
+local currentTarget = nil
+
+-- Tạo GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LockOnGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 120, 0, 40)
+toggleBtn.Position = UDim2.new(1, -130, 1, -50) -- góc dưới phải
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.TextColor3 = Color3.new(1,1,1)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 20
+toggleBtn.Text = "Lock: OFF"
+toggleBtn.Parent = screenGui
+
+-- ================= HÀM HỖ TRỢ =================
+local function angleBetween(v1, v2)
+	local dot = v1:Dot(v2)
+	dot = math.clamp(dot, -1, 1)
+	return math.deg(math.acos(dot))
+end
+
+local function hasLineOfSight(origin, targetPos, ignoreList)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = ignoreList
+	local dir = (targetPos - origin)
+	local ray = Workspace:Raycast(origin, dir, params)
+	if not ray then return true end
+	return ray.Instance:IsDescendantOf(ignoreList[#ignoreList])
+end
+
+local function getTargetPosition(model)
+	if model and model.PrimaryPart then
+		return model.PrimaryPart.Position
+	end
+	local hrp = model:FindFirstChild("HumanoidRootPart", true)
+	if hrp then return hrp.Position end
+	return model:GetPivot().Position
+end
+
+local function findBestTarget()
+	local camPos = camera.CFrame.Position
+	local camLook = camera.CFrame.LookVector
+
+	local best, bestScore = nil, math.huge
+	for _, enemy in ipairs(CollectionService:GetTagged("Enemy")) do
+		if enemy:IsA("Model") and enemy.Parent then
+			local pos = getTargetPosition(enemy)
+			local toTarget = (pos - camPos)
+			local dist = toTarget.Magnitude
+			if dist <= MAX_DISTANCE then
+				local ang = angleBetween(camLook, toTarget.Unit)
+				if ang <= FOV_DEGREES then
+					if hasLineOfSight(camPos, pos, {player.Character or player, enemy}) then
+						local score = ang * 2 + dist * 0.02
+						if score < bestScore then
+							best, bestScore = enemy, score
+						end
+					end
+				end
+			end
+		end
+	end
+	return best
+end
+
+-- ================= CHẠY LOCK CAMERA =================
+RunService.RenderStepped:Connect(function()
+	if not isLocking then return end
+	if currentTarget == nil or not currentTarget.Parent then
+		currentTarget = findBestTarget()
+	end
+	if not currentTarget then return end
+
+	local camPos = camera.CFrame.Position
+	local targetPos = getTargetPosition(currentTarget)
+	local toTarget = (targetPos - camPos)
+
+	-- kiểm tra mất mục tiêu
+	if toTarget.Magnitude > MAX_DISTANCE 
+		or angleBetween(camera.CFrame.LookVector, toTarget.Unit) > (FOV_DEGREES + 8)
+		or not hasLineOfSight(camPos, targetPos, {player.Character or player, currentTarget}) then
+		currentTarget = findBestTarget()
+		if not currentTarget then return end
+		targetPos = getTargetPosition(currentTarget)
+		toTarget = (targetPos - camPos)
+	end
+
+	-- quay mềm
+	local desired = CFrame.lookAt(camPos, targetPos)
+	camera.CFrame = camera.CFrame:Lerp(desired, math.clamp(SMOOTHNESS, 0.01, 1))
+end)
+
+-- ================= NÚT BẬT/TẮT =================
+toggleBtn.MouseButton1Click:Connect(function()
+	isLocking = not isLocking
+	currentTarget = nil
+	if isLocking then
+		toggleBtn.Text = "Lock: ON"
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+	else
+		toggleBtn.Text = "Lock: OFF"
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	end
+end)
