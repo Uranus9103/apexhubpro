@@ -1,4 +1,4 @@
---// FULL SCRIPT: ESP + Hitbox + AntiAFK + Draggable UI
+--// FULL SCRIPT: ESP + Hitbox + AntiAFK + Draggable UI + Top-Right Button
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,10 +14,10 @@ ScreenGui.Name = "HelperGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Toggle menu button
+-- Toggle menu button (góc trên bên phải)
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Size = UDim2.new(0,100,0,40)
-ToggleButton.Position = UDim2.new(1,-110,1,-50)
+ToggleButton.Position = UDim2.new(1,-110,0,10)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
 ToggleButton.TextColor3 = Color3.new(1,1,1)
 ToggleButton.Text = "Menu"
@@ -61,6 +61,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
+-- UI layout
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Frame
 UIListLayout.FillDirection = Enum.FillDirection.Vertical
