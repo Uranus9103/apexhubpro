@@ -1,0 +1,219 @@
+--// APEX HUB – Key + Auto Run Script (Fix 24h + Countdown)
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
+
+-- Hàm lưu dữ liệu
+local function saveData(data)
+    pcall(function()
+        writefile("APEX_KeyData.json", HttpService:JSONEncode(data))
+    end)
+end
+
+local function loadData()
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(readfile("APEX_KeyData.json"))
+    end)
+    if ok and data then
+        return data
+    end
+    return {}
+end
+
+-- Đọc dữ liệu đã lưu
+local Data = loadData()
+
+-- Danh sách Key + Link (theo ngày)
+local Keys = {
+    "Free_APEX382938@31",  
+    "Free_tifsefujdAPEX38@137",           
+    "Free_keythdiigeeir2@53fAPEX",        
+    "Free_tiumiadiynh;APEX",             
+    "Free_APEX38229@thf"                 
+}
+local Links = {
+    "https://link4m.com/nlKZuX",   
+    "https://link4m.com/5r6sBMNm",
+    "https://link4m.com/s7SIonha",
+    "https://link4m.com/H53VgZ",
+    "https://link4m.com/Cxct1"
+}
+
+-- Key hôm nay
+local unixUTC = DateTime.now().UnixTimestamp
+local unixLocal = unixUTC + 7 * 3600
+local index = (math.floor(unixLocal / 86400) % 5) + 1
+local CorrectKey = Keys[index]
+local KeyLink = Links[index]
+
+-- Kiểm tra dữ liệu cũ (reset nếu quá 24h)
+if Data.used and Data.time then
+    if (unixUTC - Data.time) >= 86400 then
+        Data = {} -- reset
+        saveData(Data)
+    end
+end
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "APEX_Key_GUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Hàm tạo nút Chạy Script
+local function createRunButton(showCountdown)
+    local runBtn = Instance.new("TextButton", gui)
+    runBtn.Size = UDim2.new(0, 220, 0, 65)
+    runBtn.Position = UDim2.new(0.5, -110, 0.5, -32)
+    runBtn.Text = "🚀 Chạy Script"
+    runBtn.Font = Enum.Font.GothamBold
+    runBtn.TextScaled = true
+    runBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    runBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    runBtn.AutoButtonColor = false
+    Instance.new("UICorner", runBtn).CornerRadius = UDim.new(0, 15)
+
+    local stroke2 = Instance.new("UIStroke", runBtn)
+    stroke2.Thickness = 3
+    task.spawn(function()
+        local hue = 0
+        while runBtn and runBtn.Parent do
+            hue = (hue + 1) % 360
+            runBtn.BackgroundColor3 = Color3.fromHSV(hue/360, 0.8, 1)
+            stroke2.Color = Color3.fromHSV(((hue + 180) % 360) / 360, 1, 1)
+            task.wait()
+        end
+    end)
+
+    -- Countdown text
+    if showCountdown and Data.time then
+        local countdown = Instance.new("TextLabel", gui)
+        countdown.Size = UDim2.new(0, 280, 0, 40)
+        countdown.Position = UDim2.new(0.5, -140, 0.5, 40)
+        countdown.BackgroundTransparency = 1
+        countdown.Font = Enum.Font.GothamBold
+        countdown.TextColor3 = Color3.fromRGB(255, 255, 0)
+        countdown.TextScaled = true
+
+        task.spawn(function()
+            while countdown and countdown.Parent do
+                local now = DateTime.now().UnixTimestamp
+                local remain = 86400 - (now - Data.time)
+                if remain <= 0 then
+                    countdown.Text = "❌ Key đã hết hạn"
+                    break
+                else
+                    local hrs = math.floor(remain / 3600)
+                    local mins = math.floor((remain % 3600) / 60)
+                    countdown.Text = string.format("⏳ Key còn lại: %02d giờ %02d phút", hrs, mins)
+                end
+                task.wait(60) -- update mỗi phút
+            end
+        end)
+    end
+
+    runBtn.MouseButton1Click:Connect(function()
+        runBtn.Text = "Đang tải..."
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Uranus9103/Subcakehub/refs/heads/main/Thu10"))()
+        end)
+        saveData({autoRun = true, used = true, time = unixUTC}) -- Lưu để lần sau auto chạy
+        runBtn:Destroy()
+    end)
+end
+
+-- Nếu đã chạy script trước đó thì auto chạy luôn
+if Data.autoRun and Data.used then
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Uranus9103/Subcakehub/refs/heads/main/Thu10"))()
+    end)
+    return
+end
+
+-- Nếu chưa nhập key thì hiện bảng key
+if not Data.used then
+    local frame = Instance.new("Frame", gui)
+    frame.Size = UDim2.new(0, 340, 0, 200)
+    frame.Position = UDim2.new(0.5, -170, 0.5, -100)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
+
+    local stroke = Instance.new("UIStroke", frame)
+    stroke.Thickness = 3
+    task.spawn(function()
+        local hue = 0
+        while frame and frame.Parent do
+            hue = (hue + 1) % 360
+            stroke.Color = Color3.fromHSV(hue/360, 1, 1)
+            task.wait()
+        end
+    end)
+
+    local title = Instance.new("TextLabel", frame)
+    title.Size = UDim2.new(1, -20, 0, 40)
+    title.Position = UDim2.new(0, 10, 0, 8)
+    title.BackgroundTransparency = 1
+    title.Text = "🔑 HỆ THỐNG NHẬP KEY | APEX HUB"
+    title.Font = Enum.Font.GothamBold
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextScaled = true
+
+    local box = Instance.new("TextBox", frame)
+    box.Size = UDim2.new(0.9, 0, 0, 40)
+    box.Position = UDim2.new(0.05, 0, 0.45, 0)
+    box.PlaceholderText = "Nhập Key"
+    box.Text = ""
+    box.TextScaled = true
+    box.Font = Enum.Font.Gotham
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+
+    local confirmBtn = Instance.new("TextButton", frame)
+    confirmBtn.Size = UDim2.new(0.42, 0, 0, 38)
+    confirmBtn.Position = UDim2.new(0.05, 0, 0.75, 0)
+    confirmBtn.Text = "✅ Confirm"
+    confirmBtn.Font = Enum.Font.GothamBold
+    confirmBtn.TextScaled = true
+    confirmBtn.TextColor3 = Color3.new(1,1,1)
+    confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 8)
+
+    local getKeyBtn = Instance.new("TextButton", frame)
+    getKeyBtn.Size = UDim2.new(0.42, 0, 0, 38)
+    getKeyBtn.Position = UDim2.new(0.53, 0, 0.75, 0)
+    getKeyBtn.Text = "🌐 Get Key"
+    getKeyBtn.Font = Enum.Font.GothamBold
+    getKeyBtn.TextScaled = true
+    getKeyBtn.TextColor3 = Color3.new(1,1,1)
+    getKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 85, 170)
+    Instance.new("UICorner", getKeyBtn).CornerRadius = UDim.new(0, 8)
+
+    getKeyBtn.MouseButton1Click:Connect(function()
+        if setclipboard then setclipboard(KeyLink) end
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Thông báo",
+            Text = "✅ Link Get Key đã copy!",
+            Duration = 4
+        })
+    end)
+
+    confirmBtn.MouseButton1Click:Connect(function()
+        if box.Text == CorrectKey then
+            saveData({
+                used = true,
+                time = unixUTC, -- lưu thời gian nhập key
+            })
+            frame:Destroy()
+            createRunButton(true) -- hiện đếm ngược
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "❌ Sai Key",
+                Text = "Vui lòng nhập lại!",
+                Duration = 3
+            })
+        end
+    end)
+else
+    createRunButton(true) -- Nếu đã có key, tạo luôn nút chạy + countdown
+end
