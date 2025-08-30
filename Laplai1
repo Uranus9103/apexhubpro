@@ -1,0 +1,169 @@
+--// Action Replay System (Record + Playback + Anti-Die)
+-- Đặt file này vào StarterPlayer > StarterPlayerScripts
+
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local REMOTE_NAME = "ActionRecordEvent"
+
+----------------------------------------------------------------
+-- SERVER CODE
+----------------------------------------------------------------
+if RunService:IsServer() then
+    local remote = Instance.new("RemoteEvent")
+    remote.Name = REMOTE_NAME
+    remote.Parent = ReplicatedStorage
+
+    local recordings = {}
+
+    local function makeInvulnerableClone(clone)
+        local humanoid = clone:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.MaxHealth = math.huge
+            humanoid.Health = humanoid.MaxHealth
+            humanoid.HealthChanged:Connect(function()
+                humanoid.Health = humanoid.MaxHealth
+            end)
+        end
+        for _, part in ipairs(clone:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+
+    local function playRecording(player)
+        local rec = recordings[player]
+        if not rec then return end
+        local char = player.Character
+        if not char then return end
+
+        local clone = char:Clone()
+        clone.Name = player.Name .. "_Replay"
+        clone.Parent = workspace
+        makeInvulnerableClone(clone)
+
+        local hrp = clone:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        task.spawn(function()
+            for _, frame in ipairs(rec.frames) do
+                if not clone.Parent then break end
+                hrp.CFrame = frame.cframe
+                task.wait(rec.tickRate)
+            end
+            task.wait(3)
+            if clone then clone:Destroy() end
+        end)
+    end
+
+    remote.OnServerEvent:Connect(function(player, data)
+        if type(data) ~= "table" then return end
+        if data.action == "save" then
+            recordings[player] = data.data
+            remote:FireClient(player, {msg = "Đã lưu bản ghi"})
+        elseif data.action == "play" then
+            playRecording(player)
+        elseif data.action == "clear" then
+            recordings[player] = nil
+            remote:FireClient(player, {msg = "Đã xóa bản ghi"})
+        end
+    end)
+
+    Players.PlayerRemoving:Connect(function(plr)
+        recordings[plr] = nil
+    end)
+    return
+end
+
+----------------------------------------------------------------
+-- CLIENT CODE
+----------------------------------------------------------------
+local localPlayer = Players.LocalPlayer
+local remote = ReplicatedStorage:WaitForChild(REMOTE_NAME)
+
+local recording = false
+local frames = {}
+local startTime = 0
+local tickRate = 0.1
+local conn
+
+-- UI
+local screen = Instance.new("ScreenGui", localPlayer:WaitForChild("PlayerGui"))
+screen.Name = "ReplayUI"
+
+local frame = Instance.new("Frame", screen)
+frame.Size = UDim2.new(0,150,0,150)
+frame.Position = UDim2.new(1,-160,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+frame.Active = true
+frame.Draggable = true
+
+local function makeBtn(text, order)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1,-10,0,40)
+    btn.Position = UDim2.new(0,5,0,(order-1)*45+5)
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    return btn
+end
+
+local recordBtn = makeBtn("▶ Record",1)
+local playBtn   = makeBtn("⏯ Play",2)
+local clearBtn  = makeBtn("✖ Clear",3)
+
+-- Capture 1 frame
+local function captureFrame()
+    local char = localPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    table.insert(frames, {cframe = hrp.CFrame})
+end
+
+-- Start record
+local function startRecord()
+    if recording then return end
+    recording = true
+    frames = {}
+    startTime = tick()
+    recordBtn.Text = "■ Stop"
+    conn = RunService.Heartbeat:Connect(function()
+        if tick()-startTime >= 60 then
+            stopRecord()
+        else
+            captureFrame()
+        end
+    end)
+end
+
+-- Stop + send
+function stopRecord()
+    if not recording then return end
+    recording = false
+    if conn then conn:Disconnect() end
+    recordBtn.Text = "▶ Record"
+    remote:FireServer({action="save", data={frames=frames, tickRate=tickRate}})
+end
+
+-- Buttons
+recordBtn.MouseButton1Click:Connect(function()
+    if recording then stopRecord() else startRecord() end
+end)
+
+playBtn.MouseButton1Click:Connect(function()
+    remote:FireServer({action="play"})
+end)
+
+clearBtn.MouseButton1Click:Connect(function()
+    remote:FireServer({action="clear"})
+end)
+
+-- Server messages
+remote.OnClientEvent:Connect(function(data)
+    if data.msg then warn("[Replay]", data.msg) end
+end)
+
+print("✅ Replay system loaded (Record / Play / Clear).")
