@@ -1,4 +1,5 @@
--- LocalScript gộp
+-- LocalScript hoàn chỉnh
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
@@ -9,48 +10,49 @@ gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Nút rớt part
 local dropButton = Instance.new("TextButton")
-dropButton.Size = UDim2.new(0, 150, 0, 50)
-dropButton.Position = UDim2.new(0, 50, 0, 50)
+dropButton.Size = UDim2.new(0,150,0,50)
+dropButton.Position = UDim2.new(0,50,0,50)
 dropButton.Text = "Rớt Part"
 dropButton.BackgroundColor3 = Color3.fromRGB(255,100,100)
 dropButton.Parent = gui
 
--- Nút hoán đổi vị trí
+-- Nút hoán đổi
 local swapButton = Instance.new("TextButton")
-swapButton.Size = UDim2.new(0, 150, 0, 50)
-swapButton.Position = UDim2.new(0, 50, 0, 120)
+swapButton.Size = UDim2.new(0,150,0,50)
+swapButton.Position = UDim2.new(0,50,0,120)
 swapButton.Text = "Hoán Đổi"
 swapButton.BackgroundColor3 = Color3.fromRGB(100,255,100)
 swapButton.Parent = gui
 
--- Part cần thao tác (bạn thay bằng đường dẫn Part chính xác)
-local targetPart = workspace:FindFirstChild("TargetPart")
-
+-- Tạo Part demo nếu chưa có
+local targetPart = workspace:FindFirstChild("DemoPart")
 if not targetPart then
-    warn("TargetPart không tồn tại trong Workspace!")
+    targetPart = Instance.new("Part")
+    targetPart.Size = Vector3.new(4,4,4)
+    targetPart.Position = player.Character and player.Character.HumanoidRootPart.Position + Vector3.new(0,5,5) or Vector3.new(0,5,0)
+    targetPart.Anchored = true
+    targetPart.CanCollide = true
+    targetPart.Name = "DemoPart"
+    targetPart.Parent = workspace
 end
 
--- Nút rớt part
+-- Rớt Part
 dropButton.MouseButton1Click:Connect(function()
     if targetPart then
         targetPart.Anchored = false
         targetPart.CanCollide = true
         print("Part đã rớt!")
-    else
-        warn("Không tìm thấy TargetPart để rớt.")
     end
 end)
 
--- Nút hoán đổi vị trí
+-- Hoán đổi vị trí
 swapButton.MouseButton1Click:Connect(function()
     if targetPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         local charRoot = player.Character.HumanoidRootPart
         -- Lưu vị trí tạm
         local tempCFrame = charRoot.CFrame
-        charRoot.CFrame = targetPart.CFrame
+        charRoot.CFrame = targetPart.CFrame + Vector3.new(0,3,0) -- tránh va chạm
         targetPart.CFrame = tempCFrame
         print("Hoán đổi vị trí thành công!")
-    else
-        warn("Không thể hoán đổi vị trí.")
     end
 end)
