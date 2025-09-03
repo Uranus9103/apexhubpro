@@ -1,0 +1,88 @@
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- GUI setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CameraESPGui"
+ScreenGui.Parent = PlayerGui
+
+-- Nút bật/tắt ESP
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0,150,0,50)
+ToggleButton.Position = UDim2.new(0,20,0,20)
+ToggleButton.Text = "Bật ESP"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
+ToggleButton.TextColor3 = Color3.new(1,1,1)
+ToggleButton.Parent = ScreenGui
+
+-- Frame hiển thị danh sách người chơi
+local PlayerFrame = Instance.new("Frame")
+PlayerFrame.Size = UDim2.new(0,200,0,300)
+PlayerFrame.Position = UDim2.new(0,20,0,80)
+PlayerFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+PlayerFrame.Visible = false
+PlayerFrame.Parent = ScreenGui
+
+-- ScrollingFrame để chứa nút từng người
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1,0,1,0)
+Scroll.CanvasSize = UDim2.new(0,0,0,0)
+Scroll.ScrollBarThickness = 6
+Scroll.Parent = PlayerFrame
+
+-- Layout cho nút
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0,5)
+Layout.Parent = Scroll
+
+-- Biến trạng thái
+local ESPEnabled = false
+local OriginalCamera = workspace.CurrentCamera
+local ViewingPlayer = nil
+
+-- Hàm cập nhật danh sách người chơi
+local function UpdatePlayerList()
+    Scroll:ClearAllChildren()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1,0,0,40)
+            btn.Text = player.Name
+            btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.Parent = Scroll
+
+            btn.MouseButton1Click:Connect(function()
+                ViewingPlayer = player
+            end)
+        end
+    end
+end
+
+-- Bật/tắt ESP
+ToggleButton.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    PlayerFrame.Visible = ESPEnabled
+    if ESPEnabled then
+        ToggleButton.Text = "Tắt ESP"
+        UpdatePlayerList()
+    else
+        ToggleButton.Text = "Bật ESP"
+        ViewingPlayer = nil
+        workspace.CurrentCamera.CameraSubject = LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+    end
+end)
+
+-- Render step để camera theo dõi
+RunService.RenderStepped:Connect(function()
+    if ESPEnabled and ViewingPlayer and ViewingPlayer.Character and ViewingPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+        workspace.CurrentCamera.CFrame = ViewingPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,2,5)
+    elseif not ESPEnabled then
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+    end
+end)
