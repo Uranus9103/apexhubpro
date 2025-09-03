@@ -1,7 +1,6 @@
 -- LocalScript gộp
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local mouse = player:GetMouse()
 
 -- GUI
 local gui = Instance.new("ScreenGui")
@@ -24,14 +23,21 @@ swapButton.Text = "Hoán Đổi"
 swapButton.BackgroundColor3 = Color3.fromRGB(100,255,100)
 swapButton.Parent = gui
 
--- Part cần thao tác (bạn thay bằng đường dẫn Part của bạn)
-local targetPart = workspace:WaitForChild("TargetPart") 
+-- Part cần thao tác (bạn thay bằng đường dẫn Part chính xác)
+local targetPart = workspace:FindFirstChild("TargetPart")
+
+if not targetPart then
+    warn("TargetPart không tồn tại trong Workspace!")
+end
 
 -- Nút rớt part
 dropButton.MouseButton1Click:Connect(function()
     if targetPart then
         targetPart.Anchored = false
         targetPart.CanCollide = true
+        print("Part đã rớt!")
+    else
+        warn("Không tìm thấy TargetPart để rớt.")
     end
 end)
 
@@ -43,5 +49,8 @@ swapButton.MouseButton1Click:Connect(function()
         local tempCFrame = charRoot.CFrame
         charRoot.CFrame = targetPart.CFrame
         targetPart.CFrame = tempCFrame
+        print("Hoán đổi vị trí thành công!")
+    else
+        warn("Không thể hoán đổi vị trí.")
     end
 end)
