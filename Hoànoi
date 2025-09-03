@@ -1,0 +1,71 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+-- Part cần thao tác
+local part = workspace:WaitForChild("TargetPart")
+
+-- Tạo RemoteEvents nếu chưa có
+local dropEvent = ReplicatedStorage:FindFirstChild("DropPartEvent")
+if not dropEvent then
+    dropEvent = Instance.new("RemoteEvent")
+    dropEvent.Name = "DropPartEvent"
+    dropEvent.Parent = ReplicatedStorage
+end
+
+local swapEvent = ReplicatedStorage:FindFirstChild("SwapPartEvent")
+if not swapEvent then
+    swapEvent = Instance.new("RemoteEvent")
+    swapEvent.Name = "SwapPartEvent"
+    swapEvent.Parent = ReplicatedStorage
+end
+
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PartControlGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local function createButton(text, position)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0,150,0,50)
+    btn.Position = position
+    btn.Text = text
+    btn.Parent = screenGui
+    return btn
+end
+
+local dropButton = createButton("Thả Part", UDim2.new(0,50,0,50))
+local swapButton = createButton("Hoán đổi vị trí", UDim2.new(0,50,0,120))
+
+-- Xử lý thả part
+dropButton.MouseButton1Click:Connect(function()
+    -- Hủy cố định
+    part.Anchored = false
+    -- Thêm BodyVelocity để rơi mượt
+    if not part:FindFirstChild("BodyVelocity") then
+        local bv = Instance.new("BodyVelocity")
+        bv.Velocity = Vector3.new(0,0,0)
+        bv.MaxForce = Vector3.new(4000,4000,4000)
+        bv.Parent = part
+    end
+end)
+
+-- Xử lý hoán đổi vị trí
+swapButton.MouseButton1Click:Connect(function()
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local hrp = character.HumanoidRootPart
+
+        local playerPos = hrp.Position
+        local partPos = part.Position
+
+        -- Tween mượt hoán đổi
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local partTween = TweenService:Create(part, tweenInfo, {CFrame = CFrame.new(playerPos)})
+        local playerTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(partPos)})
+
+        partTween:Play()
+        playerTween:Play()
+    end
+end)
