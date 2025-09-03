@@ -46,23 +46,17 @@ Layout.Parent = Scroll
 local ESPEnabled = false
 local ViewingPlayer = nil
 
--- Nút tải lại danh sách
-local ReloadButton = Instance.new("TextButton")
-ReloadButton.Size = UDim2.new(0,80,0,30)
-ReloadButton.Position = UDim2.new(0,110,0,20)
-ReloadButton.Text = "Tải lại"
-ReloadButton.BackgroundColor3 = Color3.fromRGB(255,170,0)
-ReloadButton.TextColor3 = Color3.new(1,1,1)
-ReloadButton.Visible = false
-ReloadButton.Parent = ScreenGui
+-- Bảng lưu các nút người chơi để cập nhật
+local PlayerButtons = {}
 
 -- Hàm cập nhật danh sách người chơi
 local function UpdatePlayerList()
     Scroll:ClearAllChildren()
+    PlayerButtons = {}
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, -10, 0, 40) -- trừ padding để vừa khung
+            btn.Size = UDim2.new(1, -10, 0, 40)
             btn.Position = UDim2.new(0,5,0,0)
             btn.Text = player.Name
             btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
@@ -72,9 +66,10 @@ local function UpdatePlayerList()
             btn.MouseButton1Click:Connect(function()
                 ViewingPlayer = player
             end)
+
+            PlayerButtons[player] = btn
         end
     end
-    -- Cập nhật chiều cao CanvasSize để ScrollFrame cuộn được
     Scroll.CanvasSize = UDim2.new(0,0,0,Layout.AbsoluteContentSize.Y + 10)
 end
 
@@ -82,7 +77,6 @@ end
 ToggleButton.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
     PlayerFrame.Visible = ESPEnabled
-    ReloadButton.Visible = ESPEnabled
     if ESPEnabled then
         ToggleButton.Text = "Tắt ESP"
         UpdatePlayerList()
@@ -94,19 +88,17 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Nút tải lại
-ReloadButton.MouseButton1Click:Connect(UpdatePlayerList)
-
 -- Tự động cập nhật khi người vào/ra server
 Players.PlayerAdded:Connect(function()
     if ESPEnabled then UpdatePlayerList() end
 end)
+
 Players.PlayerRemoving:Connect(function(playerLeaving)
     if ESPEnabled then 
         if ViewingPlayer == playerLeaving then
             ViewingPlayer = nil
         end
-        UpdatePlayerList() 
+        UpdatePlayerList()
     end
 end)
 
