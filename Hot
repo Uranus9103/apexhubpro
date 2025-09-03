@@ -19,7 +19,7 @@ ToggleButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
 ToggleButton.TextColor3 = Color3.new(1,1,1)
 ToggleButton.Parent = ScreenGui
 
--- Frame hiển thị danh sách người chơi
+-- Frame danh sách người chơi
 local PlayerFrame = Instance.new("Frame")
 PlayerFrame.Size = UDim2.new(0,200,0,300)
 PlayerFrame.Position = UDim2.new(0,20,0,80)
@@ -27,17 +27,24 @@ PlayerFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 PlayerFrame.Visible = false
 PlayerFrame.Parent = ScreenGui
 
--- ScrollFrame chứa nút từng người
+-- ScrollFrame chứa nút người chơi
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1,0,1,0)
+Scroll.Position = UDim2.new(0,0,0,0)
 Scroll.CanvasSize = UDim2.new(0,0,0,0)
 Scroll.ScrollBarThickness = 6
 Scroll.Parent = PlayerFrame
 
--- Layout cho nút
+-- Layout để các nút xếp gọn
 local Layout = Instance.new("UIListLayout")
 Layout.Padding = UDim.new(0,5)
+Layout.FillDirection = Enum.FillDirection.Vertical
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
 Layout.Parent = Scroll
+
+-- Biến trạng thái
+local ESPEnabled = false
+local ViewingPlayer = nil
 
 -- Nút tải lại danh sách
 local ReloadButton = Instance.new("TextButton")
@@ -49,17 +56,14 @@ ReloadButton.TextColor3 = Color3.new(1,1,1)
 ReloadButton.Visible = false
 ReloadButton.Parent = ScreenGui
 
--- Biến trạng thái
-local ESPEnabled = false
-local ViewingPlayer = nil
-
 -- Hàm cập nhật danh sách người chơi
 local function UpdatePlayerList()
     Scroll:ClearAllChildren()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1,0,0,40)
+            btn.Size = UDim2.new(1, -10, 0, 40) -- trừ padding để vừa khung
+            btn.Position = UDim2.new(0,5,0,0)
             btn.Text = player.Name
             btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
             btn.TextColor3 = Color3.new(1,1,1)
@@ -70,8 +74,8 @@ local function UpdatePlayerList()
             end)
         end
     end
-    -- Cập nhật chiều cao CanvasSize để ScrollFrame hoạt động
-    Scroll.CanvasSize = UDim2.new(0,0,0,Layout.AbsoluteContentSize.Y)
+    -- Cập nhật chiều cao CanvasSize để ScrollFrame cuộn được
+    Scroll.CanvasSize = UDim2.new(0,0,0,Layout.AbsoluteContentSize.Y + 10)
 end
 
 -- Bật/tắt ESP
@@ -97,16 +101,16 @@ ReloadButton.MouseButton1Click:Connect(UpdatePlayerList)
 Players.PlayerAdded:Connect(function()
     if ESPEnabled then UpdatePlayerList() end
 end)
-Players.PlayerRemoving:Connect(function()
+Players.PlayerRemoving:Connect(function(playerLeaving)
     if ESPEnabled then 
-        if ViewingPlayer == source then
+        if ViewingPlayer == playerLeaving then
             ViewingPlayer = nil
         end
         UpdatePlayerList() 
     end
 end)
 
--- Render step để camera theo dõi
+-- Camera theo dõi
 RunService.RenderStepped:Connect(function()
     if ESPEnabled and ViewingPlayer and ViewingPlayer.Character and ViewingPlayer.Character:FindFirstChild("HumanoidRootPart") then
         workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
