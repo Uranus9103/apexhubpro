@@ -1,27 +1,17 @@
+--[[ 
+    Script: Thả Part + Hoán đổi vị trí
+    Gắn LocalScript vào StarterPlayerScripts
+    Chỉ cần đổi tên part tại line 8
+]]
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
--- Part cần thao tác
-local part = workspace:WaitForChild("TargetPart")
+-- Tham chiếu tới part cần thao tác
+local part = workspace:WaitForChild("TargetPart") -- đổi "TargetPart" thành tên part của bạn
 
--- Tạo RemoteEvents nếu chưa có
-local dropEvent = ReplicatedStorage:FindFirstChild("DropPartEvent")
-if not dropEvent then
-    dropEvent = Instance.new("RemoteEvent")
-    dropEvent.Name = "DropPartEvent"
-    dropEvent.Parent = ReplicatedStorage
-end
-
-local swapEvent = ReplicatedStorage:FindFirstChild("SwapPartEvent")
-if not swapEvent then
-    swapEvent = Instance.new("RemoteEvent")
-    swapEvent.Name = "SwapPartEvent"
-    swapEvent.Parent = ReplicatedStorage
-end
-
--- GUI
+-- Tạo GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PartControlGui"
 screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -31,6 +21,10 @@ local function createButton(text, position)
     btn.Size = UDim2.new(0,150,0,50)
     btn.Position = position
     btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextScaled = true
     btn.Parent = screenGui
     return btn
 end
@@ -38,25 +32,24 @@ end
 local dropButton = createButton("Thả Part", UDim2.new(0,50,0,50))
 local swapButton = createButton("Hoán đổi vị trí", UDim2.new(0,50,0,120))
 
--- Xử lý thả part
+-- Nút thả part
 dropButton.MouseButton1Click:Connect(function()
-    -- Hủy cố định
-    part.Anchored = false
-    -- Thêm BodyVelocity để rơi mượt
-    if not part:FindFirstChild("BodyVelocity") then
-        local bv = Instance.new("BodyVelocity")
-        bv.Velocity = Vector3.new(0,0,0)
-        bv.MaxForce = Vector3.new(4000,4000,4000)
-        bv.Parent = part
+    if part then
+        part.Anchored = false
+        if not part:FindFirstChild("BodyVelocity") then
+            local bv = Instance.new("BodyVelocity")
+            bv.Velocity = Vector3.new(0,0,0)
+            bv.MaxForce = Vector3.new(4000,4000,4000)
+            bv.Parent = part
+        end
     end
 end)
 
--- Xử lý hoán đổi vị trí
+-- Nút hoán đổi vị trí
 swapButton.MouseButton1Click:Connect(function()
     local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
+    if character and character:FindFirstChild("HumanoidRootPart") and part then
         local hrp = character.HumanoidRootPart
-
         local playerPos = hrp.Position
         local partPos = part.Position
 
