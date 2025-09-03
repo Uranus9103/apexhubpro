@@ -1,0 +1,153 @@
+-- ESP Camera + UI Dragging + Fancy UI
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+
+-- ===== Tạo GUI =====
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESPGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Hàm làm UI có thể kéo
+local function makeDraggable(frame, dragHandle)
+    dragHandle = dragHandle or frame
+    local dragging, dragInput, dragStart, startPos
+
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ===== Nút bật/tắt ESP =====
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleESP"
+ToggleButton.Size = UDim2.new(0,140,0,45)
+ToggleButton.Position = UDim2.new(0.05,0,0.05,0)
+ToggleButton.Text = "🔍 Bật ESP"
+ToggleButton.TextSize = 20
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.AutoButtonColor = true
+ToggleButton.Parent = ScreenGui
+
+local cornerBtn = Instance.new("UICorner")
+cornerBtn.CornerRadius = UDim.new(0,10)
+cornerBtn.Parent = ToggleButton
+
+makeDraggable(ToggleButton)
+
+-- ===== Frame danh sách người chơi =====
+local PlayerListFrame = Instance.new("Frame")
+PlayerListFrame.Name = "PlayerListFrame"
+PlayerListFrame.Size = UDim2.new(0,230,0,300)
+PlayerListFrame.Position = UDim2.new(0.05,0,0.15,0)
+PlayerListFrame.Visible = false
+PlayerListFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+PlayerListFrame.BorderSizePixel = 0
+PlayerListFrame.Parent = ScreenGui
+
+local cornerFrame = Instance.new("UICorner")
+cornerFrame.CornerRadius = UDim.new(0,12)
+cornerFrame.Parent = PlayerListFrame
+
+-- Thanh cuộn
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Size = UDim2.new(1,0,1,0)
+ScrollingFrame.CanvasSize = UDim2.new(0,0,0,0)
+ScrollingFrame.ScrollBarThickness = 6
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.Parent = PlayerListFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = ScrollingFrame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0,5)
+
+makeDraggable(PlayerListFrame)
+
+-- ===== State =====
+local ESPEnabled = false
+
+-- ===== Cập nhật danh sách người chơi =====
+local function updatePlayerList()
+    ScrollingFrame:ClearAllChildren()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1,-10,0,35)
+            btn.Text = "👤 " .. player.Name
+            btn.TextSize = 18
+            btn.Font = Enum.Font.Gotham
+            btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+            btn.Parent = ScrollingFrame
+
+            local cornerBtn = Instance.new("UICorner")
+            cornerBtn.CornerRadius = UDim.new(0,8)
+            cornerBtn.Parent = btn
+
+            btn.MouseButton1Click:Connect(function()
+                if ESPEnabled and player.Character then
+                    local humanoid = player.Character:FindFirstChild("Humanoid")
+                    if humanoid then
+                        Camera.CameraSubject = humanoid
+                    end
+                end
+            end)
+        end
+    end
+    ScrollingFrame.CanvasSize = UDim2.new(0,0,0,UIListLayout.AbsoluteContentSize.Y)
+end
+
+-- ===== Bật/Tắt ESP =====
+ToggleButton.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    if ESPEnabled then
+        ToggleButton.Text = "❌ Tắt ESP"
+        PlayerListFrame.Visible = true
+        updatePlayerList()
+    else
+        ToggleButton.Text = "🔍 Bật ESP"
+        PlayerListFrame.Visible = false
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            Camera.CameraSubject = LocalPlayer.Character.Humanoid
+        end
+    end
+end)
+
+-- ===== Cập nhật khi có người vào/ra =====
+Players.PlayerAdded:Connect(function()
+    if ESPEnabled then updatePlayerList() end
+end)
+Players.PlayerRemoving:Connect(function()
+    if ESPEnabled then updatePlayerList() end
+end)
