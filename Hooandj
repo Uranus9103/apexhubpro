@@ -1,0 +1,47 @@
+-- LocalScript gộp
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "ControlGui"
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Nút rớt part
+local dropButton = Instance.new("TextButton")
+dropButton.Size = UDim2.new(0, 150, 0, 50)
+dropButton.Position = UDim2.new(0, 50, 0, 50)
+dropButton.Text = "Rớt Part"
+dropButton.BackgroundColor3 = Color3.fromRGB(255,100,100)
+dropButton.Parent = gui
+
+-- Nút hoán đổi vị trí
+local swapButton = Instance.new("TextButton")
+swapButton.Size = UDim2.new(0, 150, 0, 50)
+swapButton.Position = UDim2.new(0, 50, 0, 120)
+swapButton.Text = "Hoán Đổi"
+swapButton.BackgroundColor3 = Color3.fromRGB(100,255,100)
+swapButton.Parent = gui
+
+-- Part cần thao tác (bạn thay bằng đường dẫn Part của bạn)
+local targetPart = workspace:WaitForChild("TargetPart") 
+
+-- Nút rớt part
+dropButton.MouseButton1Click:Connect(function()
+    if targetPart then
+        targetPart.Anchored = false
+        targetPart.CanCollide = true
+    end
+end)
+
+-- Nút hoán đổi vị trí
+swapButton.MouseButton1Click:Connect(function()
+    if targetPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local charRoot = player.Character.HumanoidRootPart
+        -- Lưu vị trí tạm
+        local tempCFrame = charRoot.CFrame
+        charRoot.CFrame = targetPart.CFrame
+        targetPart.CFrame = tempCFrame
+    end
+end)
