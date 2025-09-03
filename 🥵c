@@ -1,4 +1,4 @@
--- ESP Camera + UI Dragging + Fancy UI
+-- ESP Camera UI Hoàn Chỉnh
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -10,7 +10,7 @@ ScreenGui.Name = "ESPGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Hàm làm UI có thể kéo
+-- Hàm kéo thả UI
 local function makeDraggable(frame, dragHandle)
     dragHandle = dragHandle or frame
     local dragging, dragInput, dragStart, startPos
@@ -97,10 +97,17 @@ makeDraggable(PlayerListFrame)
 -- ===== State =====
 local ESPEnabled = false
 
--- ===== Cập nhật danh sách người chơi =====
+-- ===== Hàm cập nhật danh sách người chơi =====
 local function updatePlayerList()
-    ScrollingFrame:ClearAllChildren()
-    for _, player in pairs(Players:GetPlayers()) do
+    -- Xóa hết nút cũ
+    for _, child in ipairs(ScrollingFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+
+    -- Tạo nút mới cho từng người chơi
+    for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local btn = Instance.new("TextButton")
             btn.Size = UDim2.new(1,-10,0,35)
@@ -125,7 +132,12 @@ local function updatePlayerList()
             end)
         end
     end
-    ScrollingFrame.CanvasSize = UDim2.new(0,0,0,UIListLayout.AbsoluteContentSize.Y)
+
+    -- Cập nhật chiều dài cuộn
+    task.wait()
+    if UIListLayout and UIListLayout.AbsoluteContentSize then
+        ScrollingFrame.CanvasSize = UDim2.new(0,0,0,UIListLayout.AbsoluteContentSize.Y + 10)
+    end
 end
 
 -- ===== Bật/Tắt ESP =====
